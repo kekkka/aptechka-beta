@@ -1,0 +1,32 @@
+[
+  {
+    "package": "tesseract.js",
+    "version": "6.0.1",
+    "files": 2,
+    "integrity": "sha512-/sPvMvrCtgxnNRCjbTYbr7BRu0yfWDsMZQ2a/T5aN/L1t8wUQN6tTWv6p6FwzpoEBA0jrN2UD2SX4QQFRdoDbA=="
+  },
+  {
+    "package": "tesseract.js-core",
+    "version": "6.0.0",
+    "files": 9,
+    "integrity": "sha512-1Qncm/9oKM7xgrQXZXNB+NRh19qiXGhxlrR8EwFbK5SaUbPZnS5OMtP/ghtqfd23hsr1ZvZbZjeuAGcMxd/ooA=="
+  },
+  {
+    "package": "pdfjs-dist",
+    "version": "4.10.38",
+    "files": 188,
+    "integrity": "sha512-/Y3fcFrXEAsMjJXeL9J8+ZG9U01LbuWaYypvDW2ycW1jL269L3js3DVBjDJ0Up9Np1uqDXsDrRihHANhZOlwdQ=="
+  },
+  {
+    "package": "@tesseract.js-data/rus",
+    "version": "1.0.0",
+    "files": 1,
+    "integrity": "sha512-GVOaLultru90gsuVGjXyPCKsg4SMeExnqSnzb8Gb+9zZ0F4wbA6bgWu/metQlcmU7OwTnYVd4UdSH9D4yBMZEA=="
+  },
+  {
+    "package": "@tesseract.js-data/eng",
+    "version": "1.0.0",
+    "files": 1,
+    "integrity": "sha512-mbTumm6KQPUHyzTPQaF3ObXYnx0SqqfV2nabqFVQBwD6Kl7PhGSLSzOlfFTWy0P3BjghaSKA2W9GB19Jk+ZcTg=="
+  }
+]

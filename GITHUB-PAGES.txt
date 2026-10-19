@@ -1,0 +1,28 @@
+ПУБЛИКАЦИЯ АПТЕЧКИ НА GITHUB PAGES
+
+1. Создайте репозиторий на GitHub. Для бесплатного GitHub Pages используйте public.
+2. Загрузите содержимое этой папки в корень репозитория, в ветку main.
+   Важно: включите скрытую папку .github с файлом workflows/pages.yml.
+3. Откройте Settings → Pages → Build and deployment → Source → GitHub Actions.
+4. В Actions запустите Publish GitHub Pages → Run workflow, если публикация
+   не стартовала автоматически после загрузки файлов.
+5. После успешного deploy адрес появится в Settings → Pages и в запуске workflow.
+   Обычно адрес имеет вид https://LOGIN.github.io/REPOSITORY/.
+
+Файлы сайта находятся в dist/. Копировать их в корень не нужно:
+workflow сам публикует dist и предварительно запускает проверки.
+Сборка, npm install, API-ключи и дополнительные секреты не требуются.
+Обновления main запускают новую проверку и публикацию.
+
+Это мобильный прототип. OCR выполняется на устройстве; записи хранятся
+локально в браузере. Аккаунты, синхронизация и фоновые push не подключены.
+Новый адрес сайта имеет отдельное хранилище: локальные записи с localhost
+или предыдущего домена автоматически туда не переносятся.
+
+Локальная проверка из этой папки:
+python3 -m http.server 8765 --bind 127.0.0.1 --directory dist
+Открыть http://127.0.0.1:8765/
+Тесты: node tests/prescription.test.cjs
+
+Официальная инструкция:
+https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages

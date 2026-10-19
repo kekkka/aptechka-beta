@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Аптечка — от исследования к MVP</title>
+  <style>
+    :root { --paper:#f6f5ef; --card:#fff; --ink:#162c29; --muted:#5d6d68; --green:#255f4b; --lime:#d7edb2; --line:#dce3dc; --soft:#eaf0e8; --amber:#fff1d6; --amberInk:#805416; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--paper); color:var(--ink); font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif; }
+    a { color:var(--green); text-underline-offset:3px; }
+    .wrap { max-width:1180px; margin:auto; padding:0 40px; }
+    header { padding:28px 0; border-bottom:1px solid var(--line); }
+    .top { display:flex; justify-content:space-between; align-items:center; gap:20px; }
+    .brand { font-size:19px; font-weight:750; letter-spacing:-.5px; display:flex; align-items:center; gap:11px; }
+    .mark { display:inline-grid; place-items:center; width:31px; height:31px; background:var(--green); color:#fff; font-size:24px; line-height:1; border-radius:9px; }
+    .meta { font-size:12px; color:var(--muted); text-align:right; }
+    .hero { padding:67px 0 49px; }
+    .eyebrow { display:block; margin-bottom:16px; font-size:11px; font-weight:750; letter-spacing:2px; text-transform:uppercase; color:var(--green); }
+    h1 { margin:0 0 24px; max-width:850px; font-size:clamp(37px,5vw,64px); line-height:1.07; font-weight:650; letter-spacing:-2.7px; }
+    .lead { max-width:850px; font-size:20px; line-height:1.55; color:#405650; margin:0 0 27px; }
+    .btn { display:inline-flex; align-items:center; gap:22px; background:var(--green); color:#fff; padding:13px 20px; border-radius:10px; text-decoration:none; font-size:14px; font-weight:650; }
+    .note { font-size:12px; color:var(--muted); margin:14px 0 0; }
+    .jump { display:flex; flex-wrap:wrap; gap:9px; padding:0 0 32px; }
+    .jump a { border:1px solid var(--line); background:#ffffff70; border-radius:999px; padding:6px 13px; text-decoration:none; font-size:12px; }
+    section { margin-bottom:50px; scroll-margin-top:24px; }
+    .section-top { display:flex; align-items:baseline; gap:17px; margin:0 0 22px; border-top:1px solid var(--line); padding-top:24px; }
+    .num { font-size:11px; font-weight:700; color:var(--green); }
+    h2 { margin:0; font-size:27px; line-height:1.2; letter-spacing:-.75px; font-weight:650; }
+    h3 { font-size:18px; line-height:1.35; margin:0 0 10px; font-weight:650; letter-spacing:-.3px; }
+    p { margin:0 0 14px; }
+    .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+    .sources { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:13px; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:23px; }
+    .sources .card { padding:19px; font-size:13px; line-height:1.55; }
+    .sources h3 { font-size:15px; }
+    .source-key { display:block; font-size:10px; text-transform:uppercase; letter-spacing:1.3px; color:var(--muted); margin-bottom:13px; }
+    .card p:last-child { margin-bottom:0; }
+    .ref { font-size:11px; color:var(--muted); display:block; margin-top:10px; line-height:1.5; }
+    .signal { background:var(--green); color:#fff; padding:29px 31px; border-radius:16px; margin:22px 0; }
+    .signal h3 { font-size:23px; margin-bottom:10px; color:var(--lime); }
+    .signal p { max-width:850px; }
+    .signal .ref { color:#d0e0d6; }
+    .stats { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:13px; margin:20px 0; }
+    .stat { background:var(--soft); border-radius:12px; padding:20px 22px; }
+    .stat strong { display:block; font-size:35px; line-height:1.1; letter-spacing:-1px; font-weight:650; margin-bottom:10px; }
+    .stat span { font-size:13px; display:block; line-height:1.45; }
+    .warning { background:var(--amber); border:1px solid #e8d7b7; padding:19px 22px; border-radius:12px; font-size:14px; color:#65491d; }
+    .pill { display:inline-block; padding:3px 8px; border-radius:5px; font-size:10px; font-weight:750; line-height:1.5; white-space:nowrap; }
+    .p0 { color:var(--green); background:#e5f0dc; }
+    .exp { color:#805416; background:#fff0d0; }
+    .later { color:#656e77; background:#edf0f2; }
+    .table-wrap { overflow-x:auto; border:1px solid var(--line); border-radius:14px; background:#fff; }
+    table { border-collapse:collapse; width:100%; text-align:left; font-size:13px; line-height:1.55; }
+    th { background:var(--soft); color:#4d6157; font-size:10px; letter-spacing:.7px; text-transform:uppercase; padding:14px 18px; vertical-align:top; }
+    td { padding:18px; border-top:1px solid var(--line); vertical-align:top; }
+    td strong { display:block; margin-bottom:5px; font-size:14px; }
+    .scope td:first-child { width:18%; }
+    .scope td:nth-child(2) { width:47%; }
+    .scope td:last-child { width:35%; }
+    .tight td { padding:15px 18px; }
+    .flow { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:10px; margin:25px 0 18px; }
+    .step { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px 14px; position:relative; font-size:13px; line-height:1.4; }
+    .step b { display:block; color:var(--green); font-size:10px; letter-spacing:1px; margin-bottom:11px; }
+    .step strong { display:block; margin-bottom:7px; font-size:15px; }
+    ul, ol { padding-left:21px; margin:10px 0 0; }
+    li { margin:0 0 8px; }
+    .small { font-size:13px; color:var(--muted); }
+    .mini-title { font-size:11px; text-transform:uppercase; font-weight:700; letter-spacing:1.1px; color:var(--green); margin-bottom:8px; }
+    .decisions { counter-reset:decision; }
+    .decision { counter-increment:decision; border-top:1px solid var(--line); padding:22px 0 22px 47px; position:relative; }
+    .decision:before { content:counter(decision,decimal-leading-zero); position:absolute; top:24px; left:0; font-size:11px; font-weight:700; color:var(--green); }
+    .decision:last-child { padding-bottom:0; }
+    footer { border-top:1px solid var(--line); padding:28px 0 45px; font-size:12px; color:var(--muted); }
+    @media (max-width:850px) { .sources { grid-template-columns:repeat(2,minmax(0,1fr)); } .flow { grid-template-columns:repeat(2,minmax(0,1fr)); } h1 { letter-spacing:-1.6px; } .scope { min-width:720px; } }
+    @media (max-width:580px) { .wrap { padding:0 20px; } .hero { padding:42px 0 32px; } .lead { font-size:17px; } .grid,.sources { grid-template-columns:1fr; } .stats { grid-template-columns:1fr; } .stat { display:grid; grid-template-columns:75px 1fr; align-items:center; } .stat strong { margin:0; } .meta { max-width:120px; } h2 { font-size:24px; } .signal { padding:24px; } }
+    @media print { body { background:#fff; font-size:11px; } .wrap { max-width:none; padding:0; } header { padding:0 0 14px; } .hero { padding:25px 0; } h1 { font-size:39px; max-width:600px; } .lead { font-size:16px; } .btn,.jump { display:none; } section { margin-bottom:27px; } .section-top { padding-top:15px; margin-bottom:15px; } h2 { font-size:21px; } h3 { font-size:15px; } .card { padding:15px; } td,th { padding:11px; } table { font-size:10px; } td strong { font-size:11px; } .card,.stat,.decision,.signal,tr { break-inside:avoid; } .table-wrap { overflow:visible; } .ref,.small { font-size:9px; } a { text-decoration:none; color:inherit; } }
+  </style>
+</head>
+<body>
+  <header><div class="wrap top"><div class="brand"><span class="mark" aria-hidden="true">+</span>аптечка</div><div class="meta">Продуктовый разбор<br>4 документа · 19 октября 2026</div></div></header>
+  <main class="wrap">
+    <div class="hero">
+      <span class="eyebrow">От исследования к работающему сценарию</span>
+      <h1>Меньше рутины.<br>Понятнее курс лечения.</h1>
+      <p class="lead">Ядро MVP — превратить назначение врача в проверенный пользователем план, помочь соблюдать его и сохранить историю выполнения. Запасы и семейный доступ расширяют этот сценарий; их ценность еще нужно проверить.</p>
+      <a class="btn" href="index.html">Открыть прототип <span aria-hidden="true">↗</span></a>
+      <p class="note">Выводы основаны только на четырех предоставленных PDF. Внешняя проверка не проводилась.</p>
+      <p class="note"><strong>Уточнение после разбора:</strong> по решению команды текущий мобильный прототип сфокусирован на уходе за пожилым родственником: общий план лечения, сигналы о неподтвержденных приемах, роли семьи и сиделки, запасы лекарств и упрощенный экран близкого. Дополнительные интервью, описанные командой, не входили в эти PDF. Устройства и видеоаналитика оставлены для следующего этапа; ручная отметка не считается объективным доказательством приема.</p>
+    </div>
+    <nav class="jump" aria-label="Разделы отчета"><a href="#sources">4 источника</a><a href="#evidence">Что подтверждено</a><a href="#scope">Границы MVP</a><a href="#conflicts">Противоречия</a><a href="#acceptance">Критерии приемки</a><a href="#prototype">Прототип и продукт</a></nav>
+
+    <section id="sources">
+      <div class="section-top"><span class="num">01 /</span><h2>Что дают четыре документа</h2></div>
+      <div class="sources">
+        <article class="card"><span class="source-key">Источник A · исследование</span><h3>Есть реальные трудности, спрос еще не измерен</h3><p>7 качественных интервью: сложные схемы, пропуски и разрозненные документы. Рекомендация — начать с управления курсом.</p><span class="ref">«Выводы по исследованиям», с. 8–16. Далее — [A].</span></article>
+        <article class="card"><span class="source-key">Источник B · MVP</span><h3>Предложена семейная продуктовая гипотеза</h3><p>Помощник для взрослого, организующего лечение пожилого родственника. Заданы P0, альфа и публичный MVP.</p><span class="ref">«Функционал мвп», с. 3–5. Далее — [B].</span></article>
+        <article class="card"><span class="source-key">Источник C · Здоровье.ру</span><h3>Напоминания уже стали базовой функцией</h3><p>Дневники, контроль приема, учет таблеток, результаты и отчеты. Полный путь от документа до курса не подтвержден обзором.</p><span class="ref">«Здоровье ру», с. 1–4, 7–9. Далее — [C].</span></article>
+        <article class="card"><span class="source-key">Источник D · Еаптека</span><h3>Сильна в покупках и цифровой аптечке</h3><p>Остатки, сроки, сканирование, ручной курс и напоминания. Фото через фармацевта помогает заказу, но не доказывает автоматический план.</p><span class="ref">«Еаптека», с. 1–4. Далее — [D].</span></article>
+      </div>
+      <div class="signal"><h3>Продуктовая гипотеза отличия — целостный путь</h3><p>Назначение → проверка данных → готовый план → выполнение. Легкая сверка остатков добавляет пользу перед покупкой. Одни напоминания или сам факт использования ИИ не дают подтвержденного преимущества.</p><span class="ref">[A], с. 13–14; [B], с. 1–2; [C], с. 9; [D], с. 5. Это гипотеза позиционирования, а не доказанный рыночный разрыв.</span></div>
+    </section>
+
+    <section id="evidence">
+      <div class="section-top"><span class="num">02 /</span><h2>На что можно опереться</h2></div>
+      <div class="stats">
+        <div class="stat"><strong>7</strong><span>интервью, включая одного врача; разные сценарии и сегменты</span></div>
+        <div class="stat"><strong>≥4</strong><span>участника с трудностями соблюдения приема по сводке авторов</span></div>
+        <div class="stat"><strong>2</strong><span>прямых примера ручной организации сложной схемы</span></div>
+      </div>
+      <p class="small">Источник: [A], с. 8–9. Это числа внутри небольшой качественной выборки, а не проценты аудитории. В PDF есть авторские сводки и отдельные цитаты, без полных транскриптов.</p>
+      <div class="grid">
+        <article class="card"><div class="mini-title">Наиболее сильный сигнал</div><h3>Управление сложным курсом</h3><p>Несколько препаратов, меняющаяся дозировка, сроки и перерывы требуют ручной работы. Напоминания сами по себе не устраняют пропуски и неопределенность «уже принял или еще нет?».</p><span class="ref">[A], с. 9, 11–14. Статусы H2 и H5 — «подтвердилась» в рамках интервью.</span></article>
+        <article class="card"><div class="mini-title">Наиболее сильный сигнал</div><h3>Доступ к актуальному назначению</h3><p>Не менее трех участников описывают разрозненное хранение документов. Для MVP нужна связь исходного назначения, плана и журнала — с быстрым поиском нужного курса.</p><span class="ref">[A], с. 9–10, 12, 16. Статус H3 — «подтвердилась» в рамках интервью.</span></article>
+        <article class="card"><div class="mini-title">Есть сигнал, приоритет не доказан</div><h3>Домашние запасы</h3><p>У четырех участников были повторные покупки, нехватка или забытые закупки. Значимость, денежный ущерб и готовность регулярно обновлять остатки не измерены.</p><span class="ref">[A], с. 10, 12, 15, 17–18. H4 подтверждена частично.</span></article>
+        <article class="card"><div class="mini-title">Есть сигнал, сегмент — гипотеза</div><h3>Совместный уход</h3><p>Один подробный случай показывает недостаточную прозрачность ухода за пожилыми. Этого мало для вывода о массовой потребности. Совместный контроль требует согласия и отдельных прав.</p><span class="ref">[A], с. 11, 13–14, 16. H6 подтверждена частично; [B], с. 3–5.</span></article>
+      </div>
+      <div class="warning" style="margin-top:18px"><strong>Главный барьер — усилия пользователя.</strong> Постоянные отметки и ручной ввод могут оказаться дороже ощущаемой пользы. Привычные конкуренты — заметки, таблетница, будильник и приложения клиник. Готовность платить, удержание и выигравший сегмент пока не установлены. [A], с. 10–14, 17.</div>
+      <p style="margin-top:20px">Для первой проверки лучше отбирать людей по <strong>сложности текущего назначения</strong>: несколько препаратов, разные условия или этапы курса. Это рабочее решение для теста. Возраст 30–60 лет и уход за пожилым с тремя и более препаратами — более узкая гипотеза из MVP, которой еще нужна отдельная валидация. [A], с. 8–9, 17; [B], с. 3.</p>
+    </section>
+
+    <section id="scope">
+      <div class="section-top"><span class="num">03 /</span><h2>Минимум, который дает законченную ценность</h2></div>
+      <div class="flow" aria-label="Основной сценарий">
+        <div class="step"><b>ШАГ 01</b><strong>Загрузить</strong>Фото, PDF или ручной ввод</div>
+        <div class="step"><b>ШАГ 02</b><strong>Проверить</strong>Поля рядом с исходником</div>
+        <div class="step"><b>ШАГ 03</b><strong>Спланировать</strong>Даты, время и условия</div>
+        <div class="step"><b>ШАГ 04</b><strong>Выполнить</strong>Принять, пропустить, отложить</div>
+        <div class="step"><b>ШАГ 05</b><strong>Восстановить</strong>План и история отметок</div>
+      </div>
+      <div class="table-wrap"><table class="scope"><thead><tr><th>Этап</th><th>Функционал</th><th>Почему здесь</th></tr></thead><tbody>
+        <tr><td><span class="pill p0">P0 · закрытая альфа</span><strong>Один пациент</strong></td><td>Загрузка фото/PDF и ручное создание. Извлечение названия, формы, дозировки, количества на прием, кратности, длительности и указаний. Обязательная проверка, сохранение исходника, расписание, напоминания и три статуса приема.</td><td>Совпадает с ядром [B], с. 4–5, и рекомендацией [A], с. 14–16. Даты курса и связь с едой необходимы для обнаруженных сценариев.</td></tr>
+        <tr><td><span class="pill p0">P0 · качество ядра</span><strong>Достоверность журнала</strong></td><td>Время и статус отметки, отмена ошибки, защита от повторного списания, прогресс по отметкам. Просмотр исходного назначения и предыдущих курсов. Поддержка подтвержденных этапов схемы или явный ручной путь для сложных случаев.</td><td>Неопределенность создает риск двойного приема; закрытое уведомление не равно выполнению. [A], с. 11, 13–14. Версии и отмена — предложенные требования к качеству реализации.</td></tr>
+        <tr><td><span class="pill exp">Расширение публичного MVP</span><strong>Остатки и нехватка</strong></td><td>Ручной остаток по препарату/упаковке, совпадение с назначенной формой и дозировкой, потребность на курс и список недостающего. Не заставлять заполнять всю аптечку до запуска курса.</td><td>В [B], с. 4–5, это P0 публичного MVP. В [A], с. 15–18, полный инвентарь отложен. В прототипе — легкая проверка гипотезы.</td></tr>
+        <tr><td><span class="pill exp">Расширение публичного MVP</span><strong>Один помощник</strong></td><td>Явное согласие пациента, ограниченные права, видимость автора отметки. Для реального продукта — авторизация и надежная синхронизация.</td><td>Обязательно при выборе семейного сегмента из [B], с. 3–5. Исследование оставляет сценарий направлением развития: [A], с. 14, 16–17. В прототипе — демонстрация согласия.</td></tr>
+        <tr><td><span class="pill later">P1 · после проверки</span><strong>Сократить ручную работу</strong></td><td>Сканирование упаковок, полноценный контроль сроков каждой упаковки, отчет для врача. Развитие семейных профилей и широкого медицинского архива — по результатам отдельной проверки.</td><td>Первые три функции — P1 в [B], с. 5. Архив и семья имеют сигналы, но могут расширить продукт за пределы основного курса: [A], с. 15–17.</td></tr>
+        <tr><td><span class="pill later">P2 · интеграции</span><strong>Экосистема</strong></td><td>Заказ лекарств и аптечные интеграции; проверка взаимодействий через специализированный валидированный источник. Платная подписка — после эксперимента с реальным предложением.</td><td>[B], с. 5; [A], с. 17. Перечень P2 не подтверждает готовность пользователей платить за продукт.</td></tr>
+      </tbody></table></div>
+      <p class="small" style="margin-top:13px">Разделение этапов — синтез документов и рабочее решение для прототипа. Приоритет из одного документа не превращает функцию в подтвержденную пользовательскую потребность.</p>
+    </section>
+
+    <section id="conflicts">
+      <div class="section-top"><span class="num">04 /</span><h2>Где материалы расходятся</h2></div>
+      <div class="decisions">
+        <article class="decision"><h3>Семейная гипотеза поставлена выше доказательств</h3><p>Документ MVP выбирает организаторов ухода и делает семейный доступ P0. Исследование видит единичный сильный сигнал и считает данных для выбора сегмента недостаточными. В прототипе сохраняем понятное согласие помощнику, но ядро должно работать и для одного человека.</p><span class="ref">[B], с. 3–5 ↔ [A], с. 11, 13, 16–17.</span></article>
+        <article class="decision"><h3>Полный инвентарь может усложнить первый запуск</h3><p>Для публичного MVP заявлена сверка запасов, а исследование предлагает отложить полный учет. Решение — начать с остатков только по текущему курсу и проверить, возвращается ли пользователь обновлять их.</p><span class="ref">[B], с. 4–5 ↔ [A], с. 15, 17–18.</span></article>
+        <article class="decision"><h3>«Не подтверждено» не означает «нет»</h3><p>Сводная матрица MVP местами категоричнее конкурентных обзоров. Например, сроки годности и сверка у Здоровье.ру указаны как отсутствующие, тогда как подробный разбор не подтверждает их. Корректный вывод — обзор не установил наличие функции.</p><span class="ref">[B], с. 1 ↔ [C], с. 3, 7–8. Конкуренты самостоятельно не тестировались.</span></article>
+        <article class="decision"><h3>Семейная подписка — вариант модели, а не доказанный спрос</h3><p>Естественная идея оплаты за семью не заменяет реальную конверсию. Исследование подтверждает затраты времени, но не готовность покупать цифровой продукт.</p><span class="ref">[B], с. 4 ↔ [A], с. 13, 17.</span></article>
+      </div>
+    </section>
+
+    <section id="acceptance">
+      <div class="section-top"><span class="num">05 /</span><h2>Критерии приемки основного сценария</h2></div>
+      <p>Ниже — предложенные проверяемые требования к реализации. Они переводят продуктовую идею в поведение интерфейса; это не результаты уже проведенных тестов.</p>
+      <div class="table-wrap"><table class="tight"><thead><tr><th>Сценарий</th><th>Проверяемый результат</th></tr></thead><tbody>
+        <tr><td><strong>Импорт и проверка</strong></td><td>Пользователь видит исходное назначение и редактируемые поля. Отсутствующие обязательные значения нельзя молча достроить. Активация возможна после явного подтверждения. Деморазбор обозначен прямо.</td></tr>
+        <tr><td><strong>Создание курса</strong></td><td>Расписание соответствует подтвержденным датам, количеству и условиям. Конец раньше начала и нулевая доза не проходят проверку. Изменяющаяся схема поддерживается явно или переводится в ручное уточнение.</td></tr>
+        <tr><td><strong>Отметки</strong></td><td>«Принял» отмечает конкретный прием один раз. «Пропустил» сохраняется отдельно; «отложил» переносит напоминание и не считается выполнением. Повторное действие не создает вторую дозу; отмена возвращает состояние.</td></tr>
+        <tr><td><strong>Остатки</strong></td><td>Отмеченный прием уменьшает нужный запас один раз; отмена восстанавливает его. Пропуск не списывает препарат. Нехватка равна положительной разнице потребности и подходящего остатка; единицы и округление упаковок видны.</td></tr>
+        <tr><td><strong>Согласие помощнику</strong></td><td>Права видны до выдачи доступа. Отзыв согласия понятен и доступен. Локальная демонстрация ролей не изображает реальное приглашение или синхронизацию между устройствами.</td></tr>
+        <tr><td><strong>История и хранение</strong></td><td>Можно открыть курс и исходное назначение, увидеть статусы и исправить ошибочную отметку. Обновление страницы сохраняет поддерживаемые локальные данные; сброс демо объясняет, что будет очищено.</td></tr>
+        <tr><td><strong>Границы продукта</strong></td><td>Интерфейс не назначает дозу, не подбирает аналог и не возобновляет старую терапию автоматически. Прогресс подписан как журнал пользовательских отметок.</td></tr>
+      </tbody></table></div>
+      <span class="ref">Основание для требований: [A], с. 11, 13–17; [B], с. 4–5. Идемпотентность, валидация и отмена — предложенные инженерные критерии.</span>
+    </section>
+
+    <section id="prototype">
+      <div class="section-top"><span class="num">06 /</span><h2>Демонстрация и реальные продуктовые зависимости</h2></div>
+      <div class="table-wrap"><table><thead><tr><th>В интерактивном прототипе</th><th>Для публичного продукта</th></tr></thead><tbody>
+        <tr><td><strong>Распознавание и проверка назначения</strong>Фото и сканы проходят локальный OCR, из текстовых PDF извлекается текст. Препараты, формы, дозы, время и сроки разбираются в редактируемые поля. После сверки оригинала пользователь проверяет аптечку, видит дефицит и запускает план. Учебный пример также проходит настоящий OCR.</td><td>Проверка точности на репрезентативных назначениях и устройствах, медицинская валидация, поддержка сложных схем. OCR и правила извлечения могут ошибаться: неопределённые значения требуют ручной проверки, сложная схема блокирует запуск.</td></tr>
+        <tr><td><strong>Расписание и статусы в браузере</strong>Пользователь проверяет сценарий и состояния «принял / пропустил / отложил» на демонстрационных данных.</td><td>Надежная доставка уведомлений с учетом разрешений, часовых поясов, фоновых ограничений и изменений назначения. Демо таймера не доказывает надежность напоминаний.</td></tr>
+        <tr><td><strong>Локальные данные, легкие запасы</strong>Интерфейс показывает расчеты потребности и нехватки и позволяет менять остатки.</td><td>Проверенный справочник форм/дозировок, обработка упаковок и единиц, транзакционные изменения, защита от конфликтов и восстановление данных.</td></tr>
+        <tr><td><strong>Демонстрация согласия</strong>Показаны роли и настройка прав одного помощника.</td><td>Аккаунты, настоящее приглашение, проверка согласия, серверные права, отзыв доступа, журнал действий и синхронизация нескольких устройств.</td></tr>
+        <tr><td><strong>Проверяемый продуктовый поток</strong>Можно оценить понятность и число ручных действий.</td><td>Медицинская проверка корректности сценариев, защита чувствительных данных и юридическая проверка. Эти условия публичного запуска прямо перечислены в [B], с. 5.</td></tr>
+      </tbody></table></div>
+      <p class="small" style="margin-top:13px">Таблица задает честные границы демонстрации. Она не утверждает, что за прототипом уже работают сервер, медицинская экспертиза или интеграции.</p>
+    </section>
+
+    <section id="validation">
+      <div class="section-top"><span class="num">07 /</span><h2>Что проверять следующим</h2></div>
+      <div class="grid">
+        <article class="card"><div class="mini-title">Сначала — понятность</div><h3>5–8 модерируемых тестов</h3><p>Люди со сложными назначениями загружают обезличенный документ, находят ошибку в разборе, настраивают курс и отмечают прием. Считаем завершения сценария, время, исправления и затруднения.</p><span class="ref">Предложено авторами исследования: [A], с. 16.</span></article>
+        <article class="card"><div class="mini-title">Затем — повторная ценность</div><h3>Пилот относительно привычного способа</h3><p>Сравниваем возвращения, использование напоминаний, отмеченные приемы и субъективную нагрузку. Отдельно проверяем инвентарь, семью и готовность платить. Отметка не гарантирует физического приема.</p><span class="ref">[A], с. 17–18. Численных порогов успеха в материалах нет — их нужно задать до пилота.</span></article>
+      </div>
+      <div class="warning" style="margin-top:18px"><strong>Что нельзя заключить из четырех PDF:</strong> рыночную долю боли, клиническую эффективность именно «Аптечки», удержание конкурентов по одной аудитории/MAU, платную конверсию и окончательный выбор целевого сегмента. Исходные гипотезы и гайд интервью ([A], с. 1–7, 19–33) не являются дополнительными результатами.</div>
+    </section>
+  </main>
+  <footer><div class="wrap"><p>Подготовлено по четырем пользовательским материалам: «Аптечка Продуктовая студия выводы по исследованиям»; «Аптечка Продуктовая студия вункционал мвп»; «Аптечка Продуктовая студия здоровье ру»; «Аптечка Продуктовая студия еаптека».</p><p>Номера страниц относятся к исходным PDF. Внешние ссылки из документов, отзывы, показатели аудитории и медицинская литература не проверялись независимо. Документы использованы как источники данных; содержащиеся в них формулировки не трактовались как команды.</p></div></footer>
+</body>
+</html>
