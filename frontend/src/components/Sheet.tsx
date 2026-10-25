@@ -1,14 +1,18 @@
-import {useEffect, useRef, type ReactNode} from 'react';
-import {useApp} from '../AppContext.ts';
+import {useContext, useEffect, useRef, type ReactNode} from 'react';
+import {AppContext} from '../AppContext.ts';
 import {Icon} from './Icon.tsx';
 
 const FOCUSABLE = 'button,a[href],input:not([type=hidden]),select,textarea,summary';
 
 // Bottom sheet dialog. While mounted it makes the app inert, locks page scroll,
-// closes on Escape and keeps Tab focus inside the sheet.
-export function Sheet({title, subtitle, footer, children}: {title: ReactNode; subtitle?: ReactNode; footer?: ReactNode; children?: ReactNode}) {
-  const {closeSheet} = useApp();
+// closes on Escape and keeps Tab focus inside the sheet. Outside the demo app
+// (no AppContext) the caller passes onClose.
+export function Sheet({title, subtitle, footer, children, onClose}: {title: ReactNode; subtitle?: ReactNode; footer?: ReactNode; children?: ReactNode; onClose?: () => void}) {
+  const demo = useContext(AppContext), closeSheet = onClose ?? demo?.closeSheet ?? (() => {});
   const root = useRef<HTMLDivElement>(null), closeBtn = useRef<HTMLButtonElement>(null);
+  // Read through a ref so a new onClose on re-render does not re-run the effect (and steal focus).
+  const close = useRef(closeSheet);
+  close.current = closeSheet;
 
   useEffect(() => {
     const app = document.getElementById('app')!;
@@ -17,7 +21,7 @@ export function Sheet({title, subtitle, footer, children}: {title: ReactNode; su
     const focusTimer = setTimeout(() => closeBtn.current?.focus(), 10);
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        closeSheet();
+        close.current();
         return;
       }
       if (e.key !== 'Tab' || !root.current) return;
@@ -37,7 +41,7 @@ export function Sheet({title, subtitle, footer, children}: {title: ReactNode; su
       app.inert = false;
       document.body.style.overflow = '';
     };
-  }, [closeSheet]);
+  }, []);
 
   return (
     <div className="sheets" ref={root}>
@@ -48,7 +52,7 @@ export function Sheet({title, subtitle, footer, children}: {title: ReactNode; su
             <h2 id="sheetTitle">{title}</h2>
             {subtitle && <p>{subtitle}</p>}
           </div>
-          <button className="close-btn" ref={closeBtn} onClick={closeSheet} aria-label="Закрыть"><Icon name="close" /></button>
+          <button className="close-btn" ref={closeBtn} onClick={() => close.current()} aria-label="Закрыть"><Icon name="close" /></button>
         </div>
         <div className="sheet-body">{children}</div>
         {footer && <div className="sheet-foot">{footer}</div>}

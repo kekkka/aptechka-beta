@@ -53,13 +53,27 @@ await test('Health service reports UP and swallows failures', async () => {
   assert.equal(await createApi(createClient({fetch: async () => reply(200, {status: 'UP'})})).health.isUp(), true);
   assert.equal(await createApi(createClient({fetch: async () => reply(503, {status: 'DOWN'})})).health.isUp(), false);
 });
-await test('Auth login keeps credentials on 404 and clears them on 401', async () => {
-  const ok = createApi(createClient({fetch: async () => reply(404)}));
-  await ok.auth.login('admin', 'admin');
+await test('Auth login loads the account and clears credentials on 401', async () => {
+  const me = {id: 'u1', email: 'a@b.ru', displayName: 'Анна', patients: []};
+  const m = mock(() => reply(200, me));
+  const ok = createApi(createClient({fetch: m.fetch}));
+  assert.deepEqual(await ok.auth.login('a@b.ru', 'secret'), me);
+  assert.equal(m.calls[0].url.endsWith('/api/me'), true);
   assert.equal(ok.auth.authenticated, true);
   const bad = createApi(createClient({fetch: async () => reply(401)}));
   await assert.rejects(bad.auth.login('admin', 'x'), e => isApiError(e) && e.unauthorized);
   assert.equal(bad.auth.authenticated, false);
+});
+await test('Care service builds patient-scoped URLs and skips empty query params', async () => {
+  const m = mock(() => reply(200, []));
+  const care = createApi(createClient({baseUrl: 'http://api.test', fetch: m.fetch})).care;
+  await care.schedule('p 1');
+  await care.schedule('p1', '2026-10-25');
+  await care.mark('p1', {courseMedId: 'm1', date: '2026-10-25', time: '08:00', status: 'TAKEN'});
+  assert.equal(m.calls[0].url, 'http://api.test/api/patients/p%201/schedule');
+  assert.equal(m.calls[1].url, 'http://api.test/api/patients/p1/schedule?date=2026-10-25');
+  assert.equal(m.calls[2].method, 'POST');
+  assert.equal(JSON.parse(String(m.calls[2].body)).status, 'TAKEN');
 });
 
 console.log(`\n${checks} API checks passed`);
