@@ -46,11 +46,12 @@
 Покупка автоматически не оформляется. Учёт аптечки хранит один общий
 остаток на точную форму/дозировку и минимальный срок этой партии.
 
-Исходники: dist/; тесты: tests/prescription.test.cjs
-Проверки: node tests/prescription.test.cjs
-Локальный запуск из папки проекта: python3 -m http.server 8765 --directory dist
+Исходники: frontend/src/ (React), статика: frontend/public/.
+Тесты: frontend/tests/prescription.test.js
+Проверки: cd frontend && npm test
+Локальный запуск: cd frontend && npm run dev
 
-Библиотеки: dist/vendor/versions.json. Основные источники:
+Библиотеки: frontend/public/vendor/versions.json. Основные источники:
 https://github.com/naptha/tesseract.js
 https://github.com/naptha/tesseract.js-core
 https://github.com/mozilla/pdf.js
