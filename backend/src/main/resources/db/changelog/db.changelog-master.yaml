@@ -1,0 +1,6 @@
+# Spring Boot runs this changelog on startup (spring.liquibase.change-log default).
+# Add new changes as a new file under changes/ and include it below; never edit an applied changeset.
+databaseChangeLog:
+  - include:
+      file: changes/001-init.yaml
+      relativeToChangelogFile: true

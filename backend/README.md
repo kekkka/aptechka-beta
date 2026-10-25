@@ -1,7 +1,15 @@
 # Бэкенд «Аптечки»
 
-Spring Boot 4 (Java 25), PostgreSQL, схема через Flyway (`src/main/resources/db/migration`).
+Spring Boot 4 (Java 25), PostgreSQL, схема через Liquibase (`src/main/resources/db/changelog`).
 Аутентификация — stateless HTTP Basic по аккаунтам из таблицы `app_user`.
+
+## Миграции
+
+Схему ведёт Liquibase, Hibernate её только проверяет (`ddl-auto: validate`). Changelog запускается при старте приложения:
+`db.changelog-master.yaml` подключает файлы из `changes/`. Новое изменение — новый файл `changes/NNN-что-меняем.yaml`
+и строка `include` в master; уже применённые changeset'ы не правим. База, созданная прежней Flyway-миграцией, подхватывается
+без пересоздания: changeset'ы начальной схемы отмечаются выполненными, если таблица уже есть (таблицу `flyway_schema_history`
+после этого можно удалить).
 
 ## Запуск
 

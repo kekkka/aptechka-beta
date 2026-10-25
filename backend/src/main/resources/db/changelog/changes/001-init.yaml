@@ -1,0 +1,349 @@
+# Initial schema. Each changeset is skipped (marked as run) when its table already
+# exists, so a database created by the earlier Flyway migration V1 is adopted as is.
+databaseChangeLog:
+
+  # Accounts, care profiles and the care circle.
+
+  - changeSet:
+      id: 001-app-user
+      author: aptechka
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: app_user
+      changes:
+        - createTable:
+            tableName: app_user
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, primaryKeyName: pk_app_user } }
+              - column: { name: email, type: varchar(254), constraints: { nullable: false, unique: true, uniqueConstraintName: uq_app_user_email } }
+              - column: { name: password_hash, type: varchar(100), constraints: { nullable: false } }
+              - column: { name: display_name, type: varchar(100), constraints: { nullable: false } }
+              - column: { name: created_at, type: timestamp with time zone, constraints: { nullable: false } }
+
+  - changeSet:
+      id: 001-patient
+      author: aptechka
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: patient
+      changes:
+        - createTable:
+            tableName: patient
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, primaryKeyName: pk_patient } }
+              - column: { name: name, type: varchar(100), constraints: { nullable: false } }
+              - column: { name: birth_year, type: integer }
+              - column: { name: notes, type: varchar(1000) }
+              - column: { name: grace_minutes, type: integer, constraints: { nullable: false } }
+              - column: { name: created_at, type: timestamp with time zone, constraints: { nullable: false } }
+
+  - changeSet:
+      id: 001-care-member
+      author: aptechka
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: care_member
+      changes:
+        - createTable:
+            tableName: care_member
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, primaryKeyName: pk_care_member } }
+              - column:
+                  name: patient_id
+                  type: uuid
+                  constraints: { nullable: false, foreignKeyName: fk_care_member_patient, references: patient(id), deleteCascade: true }
+              - column:
+                  name: user_id
+                  type: uuid
+                  constraints: { nullable: false, foreignKeyName: fk_care_member_user, references: app_user(id), deleteCascade: true }
+              - column: { name: role, type: varchar(20), constraints: { nullable: false } }
+              - column: { name: relation, type: varchar(60) }
+              - column: { name: created_at, type: timestamp with time zone, constraints: { nullable: false } }
+        - addUniqueConstraint:
+            tableName: care_member
+            columnNames: patient_id, user_id
+            constraintName: uq_care_member_patient_user
+
+  # Treatment courses decomposed into a daily schedule.
+
+  - changeSet:
+      id: 001-course
+      author: aptechka
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: course
+      changes:
+        - createTable:
+            tableName: course
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, primaryKeyName: pk_course } }
+              - column:
+                  name: patient_id
+                  type: uuid
+                  constraints: { nullable: false, foreignKeyName: fk_course_patient, references: patient(id), deleteCascade: true }
+              - column: { name: title, type: varchar(200), constraints: { nullable: false } }
+              - column: { name: start_date, type: date, constraints: { nullable: false } }
+              - column: { name: source, type: varchar(200) }
+              - column: { name: active, type: boolean, constraints: { nullable: false } }
+              - column: { name: created_by, type: uuid }
+              - column: { name: created_at, type: timestamp with time zone, constraints: { nullable: false } }
+              - column: { name: ended_on, type: date }
+        - createIndex:
+            tableName: course
+            indexName: course_patient_idx
+            columns:
+              - column: { name: patient_id }
+        - addForeignKeyConstraint:
+            baseTableName: course
+            baseColumnNames: created_by
+            referencedTableName: app_user
+            referencedColumnNames: id
+            constraintName: fk_course_created_by
+            onDelete: SET NULL
+
+  - changeSet:
+      id: 001-course-med
+      author: aptechka
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: course_med
+      changes:
+        - createTable:
+            tableName: course_med
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, primaryKeyName: pk_course_med } }
+              - column:
+                  name: course_id
+                  type: uuid
+                  constraints: { nullable: false, foreignKeyName: fk_course_med_course, references: course(id), deleteCascade: true }
+              - column: { name: position, type: integer, constraints: { nullable: false } }
+              - column: { name: name, type: varchar(100), constraints: { nullable: false } }
+              - column: { name: strength, type: varchar(50), constraints: { nullable: false } }
+              - column: { name: form, type: varchar(30), constraints: { nullable: false } }
+              - column: { name: unit, type: varchar(20), constraints: { nullable: false } }
+              - column: { name: dose, type: "numeric(8, 2)", constraints: { nullable: false } }
+              - column: { name: times, type: varchar(60), constraints: { nullable: false } }
+              - column: { name: days, type: integer, constraints: { nullable: false } }
+              - column: { name: note, type: varchar(200) }
+        - createIndex:
+            tableName: course_med
+            indexName: course_med_course_idx
+            columns:
+              - column: { name: course_id }
+
+  # Virtual medicine cabinet.
+
+  - changeSet:
+      id: 001-drug-catalog
+      author: aptechka
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: drug_catalog
+      changes:
+        - createTable:
+            tableName: drug_catalog
+            columns:
+              - column: { name: gtin, type: varchar(14), constraints: { primaryKey: true, primaryKeyName: pk_drug_catalog } }
+              - column: { name: name, type: varchar(100), constraints: { nullable: false } }
+              - column: { name: strength, type: varchar(50), constraints: { nullable: false } }
+              - column: { name: form, type: varchar(30), constraints: { nullable: false } }
+              - column: { name: unit, type: varchar(20), constraints: { nullable: false } }
+              - column: { name: pack_size, type: integer }
+              - column: { name: manufacturer, type: varchar(200) }
+
+  - changeSet:
+      id: 001-stock-item
+      author: aptechka
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: stock_item
+      changes:
+        - createTable:
+            tableName: stock_item
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, primaryKeyName: pk_stock_item } }
+              - column:
+                  name: patient_id
+                  type: uuid
+                  constraints: { nullable: false, foreignKeyName: fk_stock_item_patient, references: patient(id), deleteCascade: true }
+              - column: { name: name, type: varchar(100), constraints: { nullable: false } }
+              - column: { name: strength, type: varchar(50), constraints: { nullable: false } }
+              - column: { name: form, type: varchar(30), constraints: { nullable: false } }
+              - column: { name: unit, type: varchar(20), constraints: { nullable: false } }
+              - column: { name: qty, type: "numeric(10, 2)", constraints: { nullable: false } }
+              - column: { name: pack_size, type: integer }
+              - column: { name: expiry, type: date }
+              - column: { name: gtin, type: varchar(14) }
+              - column: { name: updated_at, type: timestamp with time zone, constraints: { nullable: false } }
+        - createIndex:
+            tableName: stock_item
+            indexName: stock_item_patient_idx
+            columns:
+              - column: { name: patient_id }
+
+  - changeSet:
+      id: 001-dose-log
+      author: aptechka
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: dose_log
+      changes:
+        - createTable:
+            tableName: dose_log
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, primaryKeyName: pk_dose_log } }
+              - column:
+                  name: course_med_id
+                  type: uuid
+                  constraints: { nullable: false, foreignKeyName: fk_dose_log_course_med, references: course_med(id), deleteCascade: true }
+              - column: { name: dose_date, type: date, constraints: { nullable: false } }
+              - column: { name: dose_time, type: varchar(5), constraints: { nullable: false } }
+              - column: { name: status, type: varchar(10), constraints: { nullable: false } }
+              - column: { name: note, type: varchar(200) }
+              - column: { name: marked_by, type: uuid }
+              - column: { name: marked_by_role, type: varchar(20), constraints: { nullable: false } }
+              - column: { name: marked_at, type: timestamp with time zone, constraints: { nullable: false } }
+              - column: { name: stock_item_id, type: uuid }
+              - column: { name: consumed, type: "numeric(8, 2)", constraints: { nullable: false } }
+        - addUniqueConstraint:
+            tableName: dose_log
+            columnNames: course_med_id, dose_date, dose_time
+            constraintName: uq_dose_log_slot
+
+  # Health diary, thresholds and requests for help.
+        - addForeignKeyConstraint:
+            baseTableName: dose_log
+            baseColumnNames: marked_by
+            referencedTableName: app_user
+            referencedColumnNames: id
+            constraintName: fk_dose_log_marked_by
+            onDelete: SET NULL
+        - addForeignKeyConstraint:
+            baseTableName: dose_log
+            baseColumnNames: stock_item_id
+            referencedTableName: stock_item
+            referencedColumnNames: id
+            constraintName: fk_dose_log_stock_item
+            onDelete: SET NULL
+
+  - changeSet:
+      id: 001-vital-reading
+      author: aptechka
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: vital_reading
+      changes:
+        - createTable:
+            tableName: vital_reading
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, primaryKeyName: pk_vital_reading } }
+              - column:
+                  name: patient_id
+                  type: uuid
+                  constraints: { nullable: false, foreignKeyName: fk_vital_reading_patient, references: patient(id), deleteCascade: true }
+              - column: { name: type, type: varchar(20), constraints: { nullable: false } }
+              - column: { name: value1, type: "numeric(6, 1)", constraints: { nullable: false } }
+              - column: { name: value2, type: "numeric(6, 1)" }
+              - column: { name: measured_at, type: timestamp with time zone, constraints: { nullable: false } }
+              - column: { name: recorded_by, type: uuid }
+              - column: { name: note, type: varchar(200) }
+        - createIndex:
+            tableName: vital_reading
+            indexName: vital_reading_patient_idx
+            columns:
+              - column: { name: patient_id }
+              - column: { name: measured_at }
+        - addForeignKeyConstraint:
+            baseTableName: vital_reading
+            baseColumnNames: recorded_by
+            referencedTableName: app_user
+            referencedColumnNames: id
+            constraintName: fk_vital_reading_recorded_by
+            onDelete: SET NULL
+
+  - changeSet:
+      id: 001-vital-threshold
+      author: aptechka
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: vital_threshold
+      changes:
+        - createTable:
+            tableName: vital_threshold
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, primaryKeyName: pk_vital_threshold } }
+              - column:
+                  name: patient_id
+                  type: uuid
+                  constraints: { nullable: false, foreignKeyName: fk_vital_threshold_patient, references: patient(id), deleteCascade: true }
+              - column: { name: type, type: varchar(20), constraints: { nullable: false } }
+              - column: { name: min1, type: "numeric(6, 1)" }
+              - column: { name: max1, type: "numeric(6, 1)" }
+              - column: { name: min2, type: "numeric(6, 1)" }
+              - column: { name: max2, type: "numeric(6, 1)" }
+        - addUniqueConstraint:
+            tableName: vital_threshold
+            columnNames: patient_id, type
+            constraintName: uq_vital_threshold_patient_type
+
+  - changeSet:
+      id: 001-help-request
+      author: aptechka
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: help_request
+      changes:
+        - createTable:
+            tableName: help_request
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, primaryKeyName: pk_help_request } }
+              - column:
+                  name: patient_id
+                  type: uuid
+                  constraints: { nullable: false, foreignKeyName: fk_help_request_patient, references: patient(id), deleteCascade: true }
+              - column: { name: created_by, type: uuid }
+              - column: { name: created_at, type: timestamp with time zone, constraints: { nullable: false } }
+              - column: { name: message, type: varchar(300) }
+              - column: { name: resolved_at, type: timestamp with time zone }
+              - column: { name: resolved_by, type: uuid }
+        - createIndex:
+            tableName: help_request
+            indexName: help_request_patient_idx
+            columns:
+              - column: { name: patient_id }
+        - addForeignKeyConstraint:
+            baseTableName: help_request
+            baseColumnNames: created_by
+            referencedTableName: app_user
+            referencedColumnNames: id
+            constraintName: fk_help_request_created_by
+            onDelete: SET NULL
+        - addForeignKeyConstraint:
+            baseTableName: help_request
+            baseColumnNames: resolved_by
+            referencedTableName: app_user
+            referencedColumnNames: id
+            constraintName: fk_help_request_resolved_by
+            onDelete: SET NULL
