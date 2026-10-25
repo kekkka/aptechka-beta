@@ -1,4 +1,5 @@
-import type {InputHTMLAttributes, ReactNode} from 'react';
+import {useContext, type InputHTMLAttributes, type ReactNode} from 'react';
+import {ModeContext} from '../ModeContext.ts';
 import {useApp} from '../AppContext.ts';
 import {delayed, signals, sourceText} from '../lib/domain.ts';
 import {claim} from '../lib/mutations.ts';
@@ -27,11 +28,12 @@ export function IconButton({icon, label, onClick}: {icon: IconName; label: strin
 }
 
 export function Footer() {
-  const {openSheet} = useApp();
+  const {openSheet} = useApp(), mode = useContext(ModeContext);
   return (
     <div className="footnote">
       Учебное демо · данные остаются в этом браузере<br />
       <button className="text-link" onClick={() => openSheet('about')}>О прототипе и его возможностях</button>
+      {mode && <><br /><button className="text-link" onClick={() => mode.setMode('auth')}>Войти в аккаунт семьи</button></>}
     </div>
   );
 }
