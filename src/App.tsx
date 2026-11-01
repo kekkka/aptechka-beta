@@ -1,3 +1,4 @@
+import { MedicationInfo } from "./MedicationInfo";
 import { VirtualPharmacy } from "./VirtualPharmacy";
 import { AddMedication } from "./AddMedication";
 import { addCatalogStock } from "./inventory";
@@ -47,6 +48,7 @@ import { Chat } from "./Chat";
 type Dialog =
   | { type: "event"; event: DoseEvent }
   | { type: "stock"; stock?: Stock }
+  | { type: "medication-info"; stock: Stock }
   | { type: "catalog"; query?: string }
   | { type: "permissions"; id: string }
   | {
@@ -552,6 +554,7 @@ export default function App() {
         canEdit={me.stock}
         onAdd={(query) => setDialog({ type: "catalog", query })}
         onEdit={(stock) => setDialog({ type: "stock", stock })}
+        onInfo={(stock) => setDialog({ type: "medication-info", stock })}
       />
     );
   else if (view === "chat")
@@ -985,7 +988,16 @@ export default function App() {
         <Button type="submit">Сохранить</Button>
       </form>
     );
-  else if (dialog?.type === "catalog") {
+  else if (dialog?.type === "medication-info") {
+    modal = (
+      <MedicationInfo
+        stock={
+          state.stock.find((s) => s.id === dialog.stock.id) || dialog.stock
+        }
+        day={state.day}
+      />
+    );
+  } else if (dialog?.type === "catalog") {
     modal = (
       <AddMedication
         day={state.day}
@@ -1283,6 +1295,8 @@ export default function App() {
   const dialogTitles: Record<Dialog["type"], string> = {
     event: "Приём лекарства",
     stock: "Домашний запас",
+    "medication-info":
+      dialog?.type === "medication-info" ? dialog.stock.name : "О препарате",
     catalog: "Добавить лекарство",
     import: "Распознать назначение",
     patient: "Профиль близкого",
@@ -1367,7 +1381,11 @@ export default function App() {
         )}
       </div>
       {dialog && (
-        <Modal title={dialogTitles[dialog.type]} onClose={close}>
+        <Modal
+          title={dialogTitles[dialog.type]}
+          onClose={close}
+          bottomSheet={dialog.type === "medication-info"}
+        >
           {modal}
         </Modal>
       )}

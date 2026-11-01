@@ -18,11 +18,13 @@ export function VirtualPharmacy({
   canEdit,
   onAdd,
   onEdit,
+  onInfo,
 }: {
   state: State;
   canEdit: boolean;
   onAdd: (query?: string) => void;
   onEdit: (stock: Stock) => void;
+  onInfo: (stock: Stock) => void;
 }) {
   const [stockTab, setStockTab] = useState("stock");
   const [query, setQuery] = useState("");
@@ -77,25 +79,33 @@ export function VirtualPharmacy({
                   .includes(query.toLowerCase()),
               )
               .map((s) => (
-                <div className="list-item" key={s.id}>
-                  <span className="med-icon">
-                    <Icon name="pill" />
-                  </span>
-                  <div className="grow">
-                    <h3>{s.name}</h3>
-                    <p>
-                      {s.strength} · {s.form}
-                    </p>
-                    <p>
-                      {s.expiry
-                        ? "Годен до " + fmt(s.expiry)
-                        : "Срок годности не указан"}
-                    </p>
-                  </div>
-                  <span className="qty">
-                    {s.qty}
-                    <small>{s.unit}</small>
-                  </span>
+                <div className="stock-row" key={s.id}>
+                  <button
+                    type="button"
+                    className="list-item stock-open"
+                    aria-label={`Информация о препарате ${s.name}, ${s.strength}`}
+                    aria-haspopup="dialog"
+                    onClick={() => onInfo(s)}
+                  >
+                    <span className="med-icon">
+                      <Icon name="pill" />
+                    </span>
+                    <span className="grow">
+                      <strong className="stock-summary-name">{s.name}</strong>
+                      <span className="stock-summary-meta">
+                        {s.strength} · {s.form}
+                      </span>
+                      <span className="stock-summary-meta">
+                        {s.expiry
+                          ? "Годен до " + fmt(s.expiry)
+                          : "Срок годности не указан"}
+                      </span>
+                    </span>
+                    <span className="qty">
+                      {s.qty}
+                      <small>{s.unit}</small>
+                    </span>
+                  </button>
                   {canEdit && (
                     <button
                       className="icon-btn"

@@ -74,11 +74,13 @@ export function Modal({
   subtitle,
   children,
   onClose,
+  bottomSheet = false,
 }: {
   title: string;
   subtitle?: string;
   children: ReactNode;
   onClose: () => void;
+  bottomSheet?: boolean;
 }) {
   const ref = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -125,7 +127,7 @@ export function Modal({
   }, [onClose]);
   return (
     <div
-      className="sheets"
+      className={`sheets ${bottomSheet ? "sheets-bottom" : ""}`}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}

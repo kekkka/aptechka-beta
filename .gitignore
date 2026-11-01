@@ -6,3 +6,5 @@
 *.zip
 *.tsbuildinfo
 .migration-backup/
+
+__pycache__/

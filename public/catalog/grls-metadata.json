@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "snapshotDate": "2026-10-30",
+  "source": "https://grls.minzdrav.gov.ru/grls.aspx",
+  "sourceFiles": [
+    {
+      "file": "grls2026-10-30-1-Действующий.xlsx",
+      "status": "Действующий",
+      "records": 19658,
+      "sha256": "72a6ede9138cfaedf4de9e1cbd20f7962dd7224055a1a9d447df68f30fca5793"
+    },
+    {
+      "file": "grls2026-10-30-1-Выдано_по_правилам_ЕАЭС.xlsx",
+      "status": "Выдано по правилам ЕАЭС",
+      "records": 9592,
+      "sha256": "d2c40f7439af917a72f9744d114cd842ec352ccfb0406a346fec85c36bda2d43"
+    },
+    {
+      "file": "grls2026-10-30-1-Действует_в_иностранных_упаковках.xlsx",
+      "status": "Действует в иностранных упаковках",
+      "records": 36,
+      "sha256": "a3e96c6a8a73d3be0cf3cc4f0f1f0c67b914df58fe5f68da3b4f7ddc13740f13"
+    },
+    {
+      "file": "grls2026-10-30-1-Действует_на_подтверждении_государственной_регистрации.xlsx",
+      "status": "Действует на подтверждении государственной регистрации",
+      "records": 77,
+      "sha256": "df1444235dcd909698feef1c91e540e039b700c8358e778f3d9ae8e63bf6b302"
+    }
+  ],
+  "records": 29363,
+  "registrationKeys": 29304,
+  "variants": 29350,
+  "conflictingKeys": 37,
+  "matching": {
+    "mdlpPackages": 69771,
+    "matchedPackages": 64828,
+    "unmatchedPackages": 4943,
+    "matchedRegistrationKeys": 17544
+  }
+}

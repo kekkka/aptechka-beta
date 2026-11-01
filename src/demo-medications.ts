@@ -3,18 +3,18 @@
 import type { State } from "./types";
 export const DEMO_MEDICATIONS = [
   {
-    catalogId: "04602424003030",
-    gtin: "04602424003030",
-    name: "Эналаприл",
+    catalogId: "04603988025230",
+    gtin: "04603988025230",
+    name: "Эналаприл Реневал",
     strength: "10 мг",
     form: "ТАБЛЕТКИ",
     unit: "табл.",
     pack: 20,
   },
   {
-    catalogId: "04607143562394",
-    gtin: "04607143562394",
-    name: "Амлодипин",
+    catalogId: "04603988054841",
+    gtin: "04603988054841",
+    name: "Амлодипин Реневал",
     strength: "5 мг",
     form: "ТАБЛЕТКИ",
     unit: "табл.",
@@ -41,6 +41,7 @@ const identity = (m: (typeof LEGACY)[number]) =>
     .join("|");
 /** Upgrade only the built-in demo fixtures; all event IDs and outcomes survive. */
 export function upgradeDemoMedications(s: State): State {
+  upgradeInstructionDemo(s);
   const course = s.courses.find((c) => c.id === "course1" && c.demo === true);
   if (!course) return s;
   for (let index = 0; index < LEGACY.length; index++) {
@@ -60,4 +61,41 @@ export function upgradeDemoMedications(s: State): State {
     }
   }
   return s;
+}
+
+/** Switch only untouched built-in fixtures to packages with verified instructions.
+ * User-created batches of another manufacturer remain that manufacturer's stock.
+ */
+function upgradeInstructionDemo(s: State) {
+  const course = s.courses.find((c) => c.id === "course1" && c.demo === true);
+  if (!course) return;
+  const previous = [
+    { gtin: "04602424003030", name: "Эналаприл" },
+    { gtin: "04607143562394", name: "Амлодипин" },
+  ];
+  previous.forEach((old, i) => {
+    const product = DEMO_MEDICATIONS[i];
+    const matches = (m: {
+      gtin?: string;
+      name: string;
+      strength: string;
+      form: string;
+      unit: string;
+      pack: number;
+    }) =>
+      m.gtin === old.gtin &&
+      m.name === old.name &&
+      m.strength === product.strength &&
+      m.form === product.form &&
+      m.unit === product.unit &&
+      m.pack === product.pack;
+    const med = course.meds.find((m) => m.id === ["a", "b"][i] && matches(m));
+    if (!med) return;
+    Object.assign(med, product);
+    const stock = s.stock.find((m) => m.id === ["sa", "sb"][i] && matches(m));
+    if (stock) Object.assign(stock, product);
+    for (const audit of s.audit)
+      if (audit.dose?.startsWith(`${course.id}|${med.id}|`))
+        audit.detail = audit.detail.replaceAll(old.name, product.name);
+  });
 }
