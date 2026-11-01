@@ -2554,3 +2554,206 @@ nav#nav button > .react-icon {
   height: 16px;
   color: #9fb1bd;
 }
+.brand .brand-logo {
+  display: block;
+  width: 145px;
+  height: auto;
+  max-width: 100%;
+}
+.login-brand .brand-logo {
+  display: block;
+  width: 185px;
+  height: auto;
+}
+.brand {
+  flex-shrink: 0;
+}
+.brand-logo {
+  object-fit: contain;
+  user-select: none;
+}
+@media (max-width: 359px) {
+  .brand .brand-logo {
+    width: 123px;
+  }
+}
+
+.doctor-health-metrics {
+  margin-top: 28px;
+}
+.doctor-section-heading .health-demo-badge {
+  font-size: 9px;
+  color: #9d896a;
+  background: #f5efe5;
+  border: 1px solid #eadfcb;
+  padding: 4px 8px;
+  border-radius: 999px;
+}
+.health-demo-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  color: #7b91a0;
+  font-size: 10px;
+  line-height: 1.8;
+  margin: -3px 2px 15px;
+}
+.health-demo-note > .react-icon {
+  padding-top: 3px;
+}
+.health-demo-note svg {
+  width: 13px;
+  height: 13px;
+}
+.health-metric-list {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+.health-metric {
+  background: #fff;
+  border: 1px solid #e5edf3;
+  border-radius: 24px;
+  padding: 18px 16px 14px;
+  overflow: hidden;
+}
+.health-metric-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.health-metric-heading h3 {
+  color: #476d84;
+  font-size: 12px;
+  font-weight: 550;
+  flex: 1;
+}
+.health-metric-symbol {
+  width: 27px;
+  height: 27px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: #eaf2f8;
+  color: #7098b0;
+}
+.health-metric-symbol svg {
+  width: 15px;
+  height: 15px;
+}
+.metric-pulse .health-metric-symbol {
+  background: #edf4ef;
+  color: #84a28d;
+}
+.metric-mood .health-metric-symbol {
+  background: #f5f0e8;
+  color: #b49a76;
+}
+.health-metric-demo {
+  font-size: 8px;
+  letter-spacing: 0.2px;
+  color: #9aabb7;
+}
+.health-metric-reading {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  margin-top: 12px;
+}
+.health-metric-reading strong {
+  color: #335f79;
+  font-size: 27px;
+  letter-spacing: -0.8px;
+  line-height: 1.3;
+  font-weight: 450;
+  font-variant-numeric: tabular-nums;
+}
+.health-metric-reading > span {
+  color: #8aa0b0;
+  font-size: 10px;
+}
+.health-metric-date {
+  font-size: 9px;
+  color: #94a7b5;
+  margin-top: 3px;
+  min-height: 16px;
+}
+.health-plot {
+  margin-top: 13px;
+  cursor: crosshair;
+  touch-action: pan-y;
+  border-radius: 7px;
+}
+.health-plot:focus-visible {
+  outline: 2px solid #82a7bd;
+  outline-offset: 3px;
+}
+.health-plot > svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  fill: none;
+  stroke: none;
+  overflow: visible;
+}
+.health-grid-line {
+  stroke: #e8eff4;
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+}
+.health-axis-label {
+  fill: #92a7b5;
+  stroke: none;
+  font-family: inherit;
+  font-size: 9px;
+}
+.health-metric-legend {
+  display: flex;
+  justify-content: center;
+  gap: 17px;
+  flex-wrap: wrap;
+  margin-top: 7px;
+}
+.health-metric-legend > span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9px;
+  color: #88a0b1;
+}
+.health-metric-legend i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: block;
+}
+.health-chart-hint {
+  font-size: 9px;
+  line-height: 1.8;
+  text-align: center;
+  color: #92a6b4;
+  margin: 12px 8px 0;
+}
+@media (max-width: 359px) {
+  .health-metric {
+    padding: 15px 12px 12px;
+  }
+  .health-metric-heading h3 {
+    font-size: 11px;
+  }
+  .health-metric-reading strong {
+    font-size: 25px;
+  }
+}
+
+.swipe-sr-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

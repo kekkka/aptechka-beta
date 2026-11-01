@@ -1,3 +1,4 @@
+import { HealthMetrics } from "./HealthMetrics";
 import { useMemo, useState } from "react";
 import { addDays, fmt, hm } from "./model";
 import {
@@ -126,6 +127,7 @@ export function DoctorReport({
         * Пропуски и приёмы без отметки в течение часа. Отсутствие отметки не
         подтверждает, что лекарство не принято.
       </p>
+      <HealthMetrics day={state.day} days={days} clock={state.clock} />
       <section className="doctor-medication-section">
         <div className="doctor-section-heading">
           <h2>Лекарства и приёмы</h2>
@@ -232,22 +234,6 @@ export function DoctorReport({
             )}
           </div>
         )}
-      </section>
-      <section className="doctor-metrics">
-        <div className="doctor-section-heading">
-          <h2>Показатели здоровья</h2>
-          <span className="doctor-soon">Позже</span>
-        </div>
-        <div className="doctor-metrics-placeholder">
-          <span className="doctor-metrics-icon">
-            <Icon name="heart" />
-          </span>
-          <strong>Здесь появятся графики показателей</strong>
-          <p>
-            Когда добавим измерения, врач сможет сопоставить их с историей
-            приёмов.
-          </p>
-        </div>
       </section>
       <p className="doctor-report-note">
         <Icon name="info" />

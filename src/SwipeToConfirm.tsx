@@ -132,9 +132,9 @@ export function SwipeToConfirm({
           <Icon name={completed ? "check" : "arrow"} />
         </button>
       </div>
-      <p className="swipe-hint" role="status" aria-live="polite">
+      <span className="swipe-sr-status" role="status" aria-live="polite">
         {completed ? completedHint : disabled ? disabledHint : hint}
-      </p>
+      </span>
     </div>
   );
 }

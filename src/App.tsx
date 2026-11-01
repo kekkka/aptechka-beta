@@ -1,3 +1,4 @@
+import { BrandLogo } from "./BrandLogo";
 import {
   useCallback,
   useEffect,
@@ -1575,10 +1576,7 @@ export default function App() {
         <header id="header">
           <div className="between">
             <a className="brand" href="#home" onClick={() => navigate("home")}>
-              <span className="brand-mark">
-                <Icon name="cross" />
-              </span>
-              аптечка
+              <BrandLogo />
             </a>
             <button
               className="profile-btn"

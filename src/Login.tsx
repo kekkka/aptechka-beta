@@ -1,3 +1,4 @@
+import { BrandLogo } from "./BrandLogo";
 import { accounts } from "./model";
 import { Icon } from "./components";
 import type { AccountId } from "./types";
@@ -5,10 +6,7 @@ export function Login({ onSelect }: { onSelect: (id: AccountId) => void }) {
   return (
     <main className="login-page">
       <div className="login-brand">
-        <span className="brand-mark">
-          <Icon name="cross" />
-        </span>
-        <span>аптечка</span>
+        <BrandLogo />
       </div>
       <div className="login-illustration" aria-hidden="true">
         <div className="login-orbit orbit-one" />
