@@ -1,3 +1,4 @@
+import { DEMO_MEDICATIONS, upgradeDemoMedications } from "./demo-medications";
 import type { State, AccountId, DoseEvent, Medication } from "./types";
 export const KEY = "aptechka_family_mobile_v1";
 export const uid = () => crypto.randomUUID();
@@ -65,42 +66,30 @@ export const seed = (): State => ({
       days: 14,
       active: true,
       demo: true,
-      source: "Учебная выписка",
+      source: "Учебная выписка · режим приёма демонстрационный",
       meds: [
         {
           id: "a",
-          name: "Препарат А",
-          strength: "10 мг",
-          form: "Таблетки",
-          unit: "табл.",
+          ...DEMO_MEDICATIONS[0],
           dose: 1,
           times: ["08:00", "20:00"],
           note: "После еды",
-          pack: 20,
           color: "",
         },
         {
           id: "b",
-          name: "Препарат Б",
-          strength: "5 мг",
-          form: "Таблетки",
-          unit: "табл.",
+          ...DEMO_MEDICATIONS[1],
           dose: 1,
           times: ["13:00"],
           note: "Во время еды",
-          pack: 14,
           color: "sand",
         },
         {
           id: "c",
-          name: "Препарат В",
-          strength: "20 мг",
-          form: "Капсулы",
-          unit: "капс.",
+          ...DEMO_MEDICATIONS[2],
           dose: 1,
           times: ["08:30"],
           note: "По учебному назначению",
-          pack: 30,
           color: "lilac",
         },
       ],
@@ -109,30 +98,18 @@ export const seed = (): State => ({
   stock: [
     {
       id: "sa",
-      name: "Препарат А",
-      strength: "10 мг",
-      form: "Таблетки",
-      unit: "табл.",
+      ...DEMO_MEDICATIONS[0],
       qty: 8,
-      pack: 20,
     },
     {
       id: "sb",
-      name: "Препарат Б",
-      strength: "5 мг",
-      form: "Таблетки",
-      unit: "табл.",
+      ...DEMO_MEDICATIONS[1],
       qty: 5,
-      pack: 14,
     },
     {
       id: "sc",
-      name: "Препарат В",
-      strength: "20 мг",
-      form: "Капсулы",
-      unit: "капс.",
+      ...DEMO_MEDICATIONS[2],
       qty: 16,
-      pack: 30,
     },
   ],
   logs: {
@@ -165,7 +142,7 @@ export const seed = (): State => ({
       type: "taken",
       dose: `course1|c|${DAY}|08:30`,
       title: "Елена отметила приём",
-      detail: "Препарат В · со слов близкого",
+      detail: "Омепразол · со слов близкого",
       date: DAY,
       time: "08:35",
     },
@@ -174,7 +151,7 @@ export const seed = (): State => ({
       type: "taken",
       dose: `course1|a|${DAY}|08:00`,
       title: "Елена отметила приём",
-      detail: "Препарат А · наблюдала лично",
+      detail: "Эналаприл · наблюдала лично",
       date: DAY,
       time: "08:03",
     },
@@ -221,6 +198,7 @@ export function loadState(): State {
       Array.isArray(s.courses) &&
       Array.isArray(s.members)
     ) {
+      upgradeDemoMedications(s);
       expireDoses(s);
       return s;
     }
@@ -284,7 +262,9 @@ export function shopping(s: State) {
     string,
     { med: Medication; needed: number; end: string }
   >();
-  for (const c of s.courses.filter((c) => c.active && canViewCourse(s, c)))
+  for (const c of s.courses.filter(
+    (c) => c.active && c.start <= s.day && canViewCourse(s, c),
+  ))
     for (let d = 0; d < c.days; d++) {
       const date = addDays(c.start, d);
       if (date < s.day) continue;
@@ -307,9 +287,14 @@ export function shopping(s: State) {
     }
   return [...needs.values()]
     .map((n) => {
-      const stock = s.stock.find((st) => medKey(st) === medKey(n.med)),
-        qty = stock?.expiry && stock.expiry < n.end ? 0 : stock?.qty || 0,
-        missing = Math.max(0, n.needed - qty),
+      const batches = s.stock.filter((st) => medKey(st) === medKey(n.med));
+      const stock = batches[0],
+        qty = batches.reduce(
+          (total, st) =>
+            total + (!st.expiry || st.expiry >= n.end ? st.qty : 0),
+          0,
+        ),
+        missing = Math.max(0, Math.round((n.needed - qty) * 100) / 100),
         pack = stock?.pack || n.med.pack;
       return {
         ...n,
@@ -321,6 +306,45 @@ export function shopping(s: State) {
       };
     })
     .filter((n) => n.missing > 0);
+}
+export function replenishShoppingStock(
+  s: State,
+  key: string,
+  qty: number,
+  expiry: string,
+  mode: "purchased" | "existing",
+): boolean {
+  if (
+    !actor(s).stock ||
+    !Number.isFinite(qty) ||
+    qty <= 0 ||
+    qty > 100000 ||
+    (qty * 4) % 1 ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(expiry) ||
+    Number.isNaN(+dateObj(expiry)) ||
+    expiry < s.day
+  )
+    return false;
+  const need = shopping(s).find((n) => medKey(n.med) === key);
+  if (!need) return false;
+  s.stock.push({
+    id: uid(),
+    name: need.med.name,
+    strength: need.med.strength,
+    form: need.med.form,
+    unit: need.med.unit,
+    qty,
+    pack: need.pack || 0,
+    expiry,
+  });
+  record(
+    s,
+    "stock",
+    actor(s).name +
+      (mode === "existing" ? " учла запас дома" : " пополнила аптечку"),
+    `${need.med.name} · ${need.med.strength} · +${qty} ${need.med.unit}`,
+  );
+  return true;
 }
 export function record(
   s: State,
@@ -359,12 +383,24 @@ export function markDose(
     ["taken", "skipped", "missed"].includes(e.log?.status || "")
   )
     return false;
-  const st = s.stock.find((st) => medKey(st) === medKey(e.med)),
-    consumed =
-      status === "taken" && st && (!st.expiry || st.expiry >= s.day)
-        ? Math.min(st.qty, e.med.dose)
-        : 0;
-  if (st) st.qty = Math.round((st.qty - consumed) * 100) / 100;
+  const allocations: { stockId: string; qty: number }[] = [];
+  let remaining = status === "taken" ? e.med.dose : 0;
+  const batches = s.stock
+    .filter(
+      (st) =>
+        medKey(st) === medKey(e.med) &&
+        st.qty > 0 &&
+        (!st.expiry || st.expiry >= s.day),
+    )
+    .sort((a, b) => (a.expiry || "9999").localeCompare(b.expiry || "9999"));
+  for (const stock of batches) {
+    if (remaining <= 0) break;
+    const qty = Math.min(stock.qty, remaining);
+    stock.qty = Math.round((stock.qty - qty) * 100) / 100;
+    remaining = Math.round((remaining - qty) * 100) / 100;
+    allocations.push({ stockId: stock.id, qty });
+  }
+  const consumed = allocations.reduce((total, a) => total + a.qty, 0);
   s.logs[id] = {
     status,
     actor: actor(s).id,
@@ -372,7 +408,8 @@ export function markDose(
     source,
     time: hm(s.clock),
     consumed,
-    stockId: st?.id,
+    stockId: allocations[0]?.stockId,
+    allocations,
     note,
   };
   s.signalState[id] = {};
@@ -389,8 +426,7 @@ export function markDose(
 export function undoDose(s: State, id: string) {
   const l = s.logs[id];
   if (!l || !actor(s).mark || (!isOwner(s) && l.actor !== s.role)) return;
-  const st = s.stock.find((st) => st.id === l.stockId);
-  if (st) st.qty += l.consumed || 0;
+  restoreDoseStock(s, l);
   delete s.logs[id];
   s.signalState[id] = {};
   record(
@@ -452,12 +488,21 @@ export function resetDemoDose(s: State, id: string): boolean {
   )
     return false;
   const log = s.logs[id];
-  if (log.status === "taken" && log.consumed && log.consumed > 0) {
-    const stock = s.stock.find((item) => item.id === log.stockId);
-    if (stock) stock.qty = Math.round((stock.qty + log.consumed) * 100) / 100;
-  }
+  if (log.status === "taken") restoreDoseStock(s, log);
   delete s.logs[id];
   delete s.signalState[id];
   s.audit = s.audit.filter((entry) => entry.dose !== id);
   return true;
+}
+
+function restoreDoseStock(s: State, log: State["logs"][string]) {
+  const allocations =
+    log.allocations ??
+    (log.stockId && log.consumed
+      ? [{ stockId: log.stockId, qty: log.consumed }]
+      : []);
+  for (const allocation of allocations) {
+    const stock = s.stock.find((st) => st.id === allocation.stockId);
+    if (stock) stock.qty = Math.round((stock.qty + allocation.qty) * 100) / 100;
+  }
 }

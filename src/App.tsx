@@ -1,3 +1,6 @@
+import { VirtualPharmacy } from "./VirtualPharmacy";
+import { AddMedication } from "./AddMedication";
+import { addCatalogStock } from "./inventory";
 import { BrandLogo } from "./BrandLogo";
 import {
   useCallback,
@@ -23,7 +26,6 @@ import {
   expireDoses,
   setDemoTime,
   resetDemoDose,
-  medKey,
   mins,
   record,
   shopping,
@@ -41,7 +43,7 @@ import { ImportPrescription } from "./ImportPrescription";
 type Dialog =
   | { type: "event"; event: DoseEvent }
   | { type: "stock"; stock?: Stock }
-  | { type: "buy"; key: string }
+  | { type: "catalog"; query?: string }
   | { type: "permissions"; id: string }
   | {
       type:
@@ -83,9 +85,7 @@ export default function App() {
     [dialog, setDialog] = useState<Dialog | null>(null),
     [toast, setToast] = useState(""),
     [selectedDate, setSelectedDate] = useState(state.day),
-    [filter, setFilter] = useState("all"),
-    [stockTab, setStockTab] = useState("stock"),
-    [query, setQuery] = useState("");
+    [filter, setFilter] = useState("all");
   const [completedDose, setCompletedDose] = useState<DoseEvent | null>(null);
   useEffect(() => {
     if (!completedDose) return;
@@ -112,6 +112,7 @@ export default function App() {
   }, [state]);
   useEffect(() => {
     const onHash = () => {
+      setDialog(null);
       setView(getView());
       if (location.hash === "#login") {
         setAccount(null);
@@ -356,51 +357,53 @@ export default function App() {
             </span>
           </button>
         )}
-        <div className="quick-grid">
-          {(
-            [
-              {
-                id: "plan",
-                icon: "calendar",
-                title: "План лечения",
-                desc: "Расписание и отметки",
-              },
-              {
-                id: "stock",
-                icon: "box",
-                title: "Домашняя аптечка",
-                desc: `${needs.length} позиций к покупке`,
-              },
-              {
-                id: "family",
-                icon: "users",
-                title: "Круг заботы",
-                desc: "Кто помогает близкому",
-              },
-              {
-                id: "history",
-                icon: "heart",
-                title: "Журнал заботы",
-                desc: "Все события в одном месте",
-              },
-            ] as const
-          ).map((c) => (
-            <button
-              className="quick-card"
-              key={c.id}
-              onClick={() => navigate(c.id)}
-            >
-              <span className="quick-icon">
-                <Icon name={c.icon} />
-                <span className="arrow">
-                  <Icon name="arrow" />
+        {!owner && (
+          <div className="quick-grid">
+            {(
+              [
+                {
+                  id: "plan",
+                  icon: "calendar",
+                  title: "План лечения",
+                  desc: "Расписание и отметки",
+                },
+                {
+                  id: "stock",
+                  icon: "box",
+                  title: "Виртуальная аптечка",
+                  desc: `${needs.length} позиций к покупке`,
+                },
+                {
+                  id: "family",
+                  icon: "users",
+                  title: "Круг заботы",
+                  desc: "Кто помогает близкому",
+                },
+                {
+                  id: "history",
+                  icon: "heart",
+                  title: "Журнал заботы",
+                  desc: "Все события в одном месте",
+                },
+              ] as const
+            ).map((c) => (
+              <button
+                className="quick-card"
+                key={c.id}
+                onClick={() => navigate(c.id)}
+              >
+                <span className="quick-icon">
+                  <Icon name={c.icon} />
+                  <span className="arrow">
+                    <Icon name="arrow" />
+                  </span>
                 </span>
-              </span>
-              <strong>{c.title}</strong>
-              <small>{c.desc}</small>
-            </button>
-          ))}
-        </div>
+                <strong>{c.title}</strong>
+                <small>{c.desc}</small>
+              </button>
+            ))}
+          </div>
+        )}
         <div className="section-title">
           <h2>Сегодня по плану</h2>
           <button className="text-link" onClick={() => navigate("plan")}>
@@ -535,154 +538,12 @@ export default function App() {
     );
   } else if (view === "stock")
     content = (
-      <>
-        <Heading
-          title="Домашняя аптечка"
-          subtitle="Остатки дома и покупки на текущий курс."
-          action={
-            me.stock ? (
-              <button
-                className="icon-btn"
-                aria-label="Добавить препарат"
-                onClick={() => setDialog({ type: "stock" })}
-              >
-                <Icon name="plus" />
-              </button>
-            ) : undefined
-          }
-        />
-        <div className="segmented">
-          <button
-            className={stockTab === "stock" ? "active" : ""}
-            onClick={() => setStockTab("stock")}
-          >
-            Дома · {state.stock.length}
-          </button>
-          <button
-            className={stockTab === "buy" ? "active" : ""}
-            onClick={() => setStockTab("buy")}
-          >
-            Купить · {needs.length}
-          </button>
-        </div>
-        {stockTab === "stock" ? (
-          <>
-            <label className="search space">
-              <Icon name="search" />
-              <input
-                placeholder="Найти препарат"
-                aria-label="Поиск в аптечке"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-            </label>
-            <div className="card space">
-              {state.stock
-                .filter((s) =>
-                  (s.name + s.strength)
-                    .toLowerCase()
-                    .includes(query.toLowerCase()),
-                )
-                .map((s) => (
-                  <div className="list-item" key={s.id}>
-                    <span className="med-icon">
-                      <Icon name="pill" />
-                    </span>
-                    <div className="grow">
-                      <h3>{s.name}</h3>
-                      <p>
-                        {s.strength} · {s.form}
-                      </p>
-                      <p>
-                        {s.expiry
-                          ? "Годен до " + fmt(s.expiry)
-                          : "Срок годности не указан"}
-                      </p>
-                    </div>
-                    <span className="qty">
-                      {s.qty}
-                      <small>{s.unit}</small>
-                    </span>
-                    {me.stock && (
-                      <button
-                        className="icon-btn"
-                        aria-label={`Изменить ${s.name}`}
-                        onClick={() => setDialog({ type: "stock", stock: s })}
-                      >
-                        <Icon name="edit" />
-                      </button>
-                    )}
-                  </div>
-                ))}
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="hint space">
-              <Icon name="bag" />
-              <span>
-                Учитываем точную форму, дозировку, оставшийся курс и срок
-                годности запаса.
-              </span>
-            </div>
-            <div className="card space">
-              {needs.length ? (
-                needs.map((n) => (
-                  <div className="buy-card" key={medKey(n.med)}>
-                    <h3>
-                      {n.med.name} · {n.med.strength}
-                    </h3>
-                    <p>{n.med.form}</p>
-                    <div className="formula">
-                      На курс {n.needed} − дома {n.qty} ={" "}
-                      <strong>
-                        докупить {n.missing} {n.med.unit}
-                      </strong>
-                    </div>
-                    {n.packs && (
-                      <p>
-                        {n.packs} уп. по {n.pack} шт.
-                      </p>
-                    )}
-                    {me.stock && (
-                      <Button
-                        kind="soft"
-                        onClick={() =>
-                          setDialog({ type: "buy", key: medKey(n.med) })
-                        }
-                      >
-                        Пополнить аптечку
-                      </Button>
-                    )}
-                  </div>
-                ))
-              ) : (
-                <Empty title="Всего хватает">
-                  Запаса достаточно на оставшийся курс
-                </Empty>
-              )}
-            </div>
-            <div className="space">
-              <Button
-                kind="white"
-                onClick={() =>
-                  exportFile(
-                    "Покупки.txt",
-                    needs
-                      .map(
-                        (n) =>
-                          `${n.med.name} ${n.med.strength} ${n.med.form}: ${n.missing} ${n.med.unit}`,
-                      )
-                      .join("\n"),
-                  )
-                }
-              >
-                Скачать список покупок
-              </Button>
-            </div>
-          </>
-        )}
-      </>
+      <VirtualPharmacy
+        state={state}
+        canEdit={me.stock}
+        onAdd={(query) => setDialog({ type: "catalog", query })}
+        onEdit={(stock) => setDialog({ type: "stock", stock })}
+      />
     );
   else if (view === "signals")
     content = (
@@ -921,11 +782,12 @@ export default function App() {
   const saveStock = (e: FormEvent<HTMLFormElement>, old?: Stock) => {
     const d = formData(e),
       s: Stock = {
+        ...old,
         id: old?.id || uid(),
-        name: String(d.get("name")).trim(),
-        strength: String(d.get("strength")).trim(),
-        form: String(d.get("form")),
-        unit: d.get("form") === "Капсулы" ? "капс." : "табл.",
+        name: old?.name || String(d.get("name")).trim(),
+        strength: old?.strength ?? String(d.get("strength")).trim(),
+        form: old?.form || String(d.get("form")),
+        unit: old?.unit || (d.get("form") === "Капсулы" ? "капс." : "табл."),
         qty: Number(d.get("qty")),
         pack: Number(d.get("pack")),
         expiry: String(d.get("expiry")),
@@ -933,20 +795,16 @@ export default function App() {
     if (
       !me.stock ||
       !s.name ||
-      !s.strength ||
+      (!old && !s.strength) ||
       !Number.isFinite(s.qty) ||
       s.qty < 0 ||
       s.qty > 100000 ||
       (s.qty * 4) % 1 ||
       !Number.isInteger(s.pack) ||
-      s.pack < 1 ||
-      s.pack > 1000
+      s.pack < 0 ||
+      s.pack > 100000
     ) {
       setToast("Проверьте значения остатка и упаковки.");
-      return;
-    }
-    if (state.stock.some((st) => st.id !== s.id && medKey(st) === medKey(s))) {
-      setToast("Препарат уже есть в аптечке. Измените его остаток.");
       return;
     }
     change((next) => {
@@ -1177,22 +1035,13 @@ export default function App() {
   } else if (dialog?.type === "stock")
     modal = (
       <form onSubmit={(e) => saveStock(e, dialog.stock)}>
-        <Field label="Название" name="name" defaultValue={dialog.stock?.name} />
-        <Field
-          label="Дозировка"
-          name="strength"
-          defaultValue={dialog.stock?.strength}
-        />
-        <label className="field">
-          <span>Форма</span>
-          <select name="form" defaultValue={dialog.stock?.form || "Таблетки"}>
-            <option>Таблетки</option>
-            <option>Капсулы</option>
-          </select>
-        </label>
+        <h3>{dialog.stock?.name}</h3>
+        <p>
+          {dialog.stock?.strength} · {dialog.stock?.form}
+        </p>
         <div className="field-grid">
           <Field
-            label="Остаток, штук"
+            label={`Остаток, ${dialog.stock?.unit || "шт."}`}
             name="qty"
             type="number"
             min={0}
@@ -1204,10 +1053,10 @@ export default function App() {
             label="Штук в упаковке"
             name="pack"
             type="number"
-            min={1}
-            max={1000}
+            min={0}
+            max={100000}
             step={1}
-            defaultValue={dialog.stock?.pack || 20}
+            defaultValue={dialog.stock?.pack ?? 0}
           />
         </div>
         <Field
@@ -1219,66 +1068,21 @@ export default function App() {
         <Button type="submit">Сохранить</Button>
       </form>
     );
-  else if (dialog?.type === "buy") {
-    const n = needs.find((n) => medKey(n.med) === dialog.key);
-    modal = n ? (
-      <form
-        onSubmit={(e) => {
-          const d = formData(e),
-            qty = Number(d.get("qty")),
-            expiry = String(d.get("expiry"));
-          if (
-            !me.stock ||
-            !Number.isFinite(qty) ||
-            qty <= 0 ||
-            qty > 100000 ||
-            (qty * 4) % 1 ||
-            !expiry
-          )
-            return;
-          change((s) => {
-            const st = s.stock.find((st) => medKey(st) === dialog.key);
-            if (st) {
-              st.qty += qty;
-              st.expiry = st.expiry && st.expiry < expiry ? st.expiry : expiry;
-            } else
-              s.stock.push({
-                id: uid(),
-                name: n.med.name,
-                strength: n.med.strength,
-                form: n.med.form,
-                unit: n.med.unit,
-                qty,
-                pack: n.pack || 0,
-                expiry,
-              });
-            record(
-              s,
-              "stock",
-              me.name + " пополнила аптечку",
-              n.med.name + " · +" + qty,
-            );
-          });
+  else if (dialog?.type === "catalog") {
+    modal = (
+      <AddMedication
+        day={state.day}
+        initialQuery={dialog.query}
+        onSave={(product, qty, expiry) => {
+          const next = structuredClone(state);
+          if (!addCatalogStock(next, product, qty, expiry)) return false;
+          setState(next);
           close();
-          setToast("Запас обновлён.");
+          setToast("Лекарство добавлено. Запас и список покупок обновлены.");
+          return true;
         }}
-      >
-        <p>
-          Не хватает {n.missing} {n.med.unit}
-        </p>
-        <Field
-          label="Куплено, штук"
-          name="qty"
-          type="number"
-          min={0.25}
-          max={100000}
-          step={0.25}
-          defaultValue={n.packs && n.pack ? n.packs * n.pack : n.missing}
-        />
-        <Field label="Годен до" name="expiry" type="date" />
-        <Button type="submit">Добавить в аптечку</Button>
-      </form>
-    ) : null;
+      />
+    );
   } else if (dialog?.type === "import")
     modal = (
       <ImportPrescription
@@ -1562,7 +1366,7 @@ export default function App() {
   const dialogTitles: Record<Dialog["type"], string> = {
     event: "Приём лекарства",
     stock: "Домашний запас",
-    buy: "Пополнить аптечку",
+    catalog: "Добавить лекарство",
     import: "Распознать назначение",
     patient: "Профиль близкого",
     contact: "Связаться с близкими",

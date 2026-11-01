@@ -7,8 +7,8 @@ test("Moments group simultaneous medications and preserve whether confirmation i
   s.courses[0].meds[2].times = ["08:00"];
   const result = demoMoments(events(s));
   assert.equal(result[0].time, "08:00");
-  assert.match(result[0].names, /Препарат А/);
-  assert.match(result[0].names, /Препарат В/);
+  assert.ok(result[0].names.includes(s.courses[0].meds[0].name));
+  assert.ok(result[0].names.includes(s.courses[0].meds[2].name));
   assert.equal(result[0].pending, true);
   assert.deepEqual(
     result.map((m) => m.time),

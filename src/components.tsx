@@ -168,8 +168,8 @@ export function Field({
   defaultValue?: string | number;
   type?: string;
   required?: boolean;
-  min?: number;
-  max?: number;
+  min?: number | string;
+  max?: number | string;
   step?: number;
 }) {
   return (

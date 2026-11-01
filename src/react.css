@@ -2269,3 +2269,251 @@ nav#nav button > .react-icon {
   white-space: nowrap;
   border: 0;
 }
+
+.manager-shopping {
+  margin-top: 24px;
+}
+.shopping-intro {
+  color: #6b8597;
+  font-size: 13px;
+  line-height: 1.6;
+  margin: -4px 0 14px;
+}
+.shopping-count {
+  background: #e5f1f7;
+  color: #21566e;
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-size: 13px;
+}
+.shopping-item {
+  padding: 22px;
+}
+.shopping-item + .shopping-item {
+  border-top: 1px solid #e8eef2;
+}
+.shopping-item-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.shopping-item-heading h3 {
+  font-size: 16px;
+  margin: 0 0 5px;
+}
+.shopping-item-heading p,
+.shopping-packs {
+  font-size: 12px;
+  color: #6b8597;
+  margin: 0;
+}
+.shopping-quantity {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 16px 0 8px;
+}
+.shopping-quantity strong {
+  color: #21566e;
+  font-size: 16px;
+}
+.shopping-quantity span {
+  color: #6b8597;
+  font-size: 12px;
+}
+.shopping-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 16px;
+}
+.shopping-actions .btn {
+  min-width: 0;
+  padding: 12px 8px;
+  font-size: 13px;
+}
+@media (max-width: 359px) {
+  .shopping-item {
+    padding: 16px;
+  }
+  .shopping-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pharmacy-main-action > .btn {
+  width: 100%;
+  min-height: 64px;
+  font-size: 16px;
+  justify-content: center;
+}
+.pharmacy-shopping {
+  margin-top: 28px;
+}
+.pharmacy-shopping-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 14px;
+}
+.pharmacy-shopping-heading h2 {
+  font-size: 17px;
+  margin: 0;
+}
+.pharmacy-shopping-heading > span {
+  background: #e7eff4;
+  color: #617f91;
+  padding: 4px 9px;
+  border-radius: 20px;
+  font-size: 11px;
+}
+.pharmacy-list {
+  display: grid;
+  gap: 10px;
+}
+.pharmacy-card {
+  background: #fff;
+  border: 1px solid #e1eaf0;
+  border-radius: 16px;
+  padding: 14px 16px;
+  min-width: 0;
+}
+.pharmacy-card-needed {
+  border-color: #d88383;
+  background: #fffafa;
+}
+.pharmacy-card h3 {
+  font-size: 15px;
+  line-height: 1.5;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.pharmacy-card h3 span {
+  color: #718b9b;
+  font-size: 13px;
+  font-weight: 400;
+}
+.pharmacy-status {
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 5px 0 0;
+}
+.pharmacy-status strong {
+  color: #a64545;
+  font-weight: 500;
+}
+.catalog-methods {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+.catalog-methods button {
+  border: 1px solid #e1eaf0;
+  background: #f6f9fb;
+  border-radius: 16px;
+  padding: 14px 5px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font: inherit;
+  font-size: 11px;
+  color: #5c7b8e;
+  cursor: pointer;
+}
+.catalog-methods button.active {
+  background: #e3f1f6;
+  color: #114d64;
+  border-color: #a1c6d6;
+}
+.catalog-methods .react-icon {
+  width: 22px;
+  height: 22px;
+}
+.catalog-meta {
+  font-size: 11px;
+  line-height: 1.65;
+  color: #718b9b;
+  overflow-wrap: anywhere;
+}
+.catalog-error {
+  color: #a64545;
+  font-size: 13px;
+}
+.catalog-results {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0;
+}
+.catalog-result {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  border: 1px solid #dfe9ef;
+  border-radius: 20px;
+  background: #fff;
+  color: #254d62;
+  text-align: left;
+  padding: 18px;
+  cursor: pointer;
+  font: inherit;
+  overflow-wrap: anywhere;
+}
+.catalog-result:hover,
+.catalog-result:focus-visible {
+  border-color: #8bb8ca;
+  background: #f3f9fc;
+}
+.catalog-result strong {
+  font-size: 15px;
+}
+.catalog-result > span {
+  font-size: 12px;
+  line-height: 1.5;
+}
+.catalog-result small {
+  color: #718b9b;
+  font-size: 10px;
+  line-height: 1.5;
+}
+.catalog-result .catalog-choose {
+  color: #185b75;
+  margin-top: 5px;
+  font-weight: 600;
+}
+.catalog-selected h3 {
+  margin: 20px 0 8px;
+}
+.catalog-selected > p {
+  line-height: 1.65;
+}
+.barcode-scanner {
+  margin-top: 18px;
+}
+.barcode-scanner video {
+  width: 100%;
+  max-height: 330px;
+  background: #123747;
+  border-radius: 20px;
+  object-fit: cover;
+}
+.barcode-scanner p {
+  font-size: 13px;
+  line-height: 1.65;
+  color: #6b8597;
+}
+nav#nav button span {
+  white-space: normal;
+  line-height: 1.2;
+}
+@media (max-width: 480px) {
+  nav#nav button span {
+    max-width: 72px;
+    font-size: 9px;
+  }
+  .pharmacy-card {
+    padding: 12px 14px;
+  }
+}

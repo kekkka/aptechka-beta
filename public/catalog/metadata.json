@@ -1,0 +1,20 @@
+{
+  "source": "https://датамаркет.честныйзнак.рф/bi/opendata/7731376812-MDLPGtins",
+  "downloadUrl": "https://xn--80aaani3am7aog.xn--80ajghhoc2aj1c8b.xn--p1ai/bi/api/opendata/7731376812-MDLPGtins/data/data-20261029-structure-20240611.csv",
+  "snapshotDate": "2026-10-29",
+  "count": 69771,
+  "schemaVersion": 1,
+  "columns": [
+    "gtin",
+    "name",
+    "inn",
+    "strength",
+    "form",
+    "manufacturer",
+    "package",
+    "packSize",
+    "unit",
+    "description",
+    "registration"
+  ]
+}

@@ -20,6 +20,8 @@ export interface Member {
   alerts: boolean;
 }
 export interface Medication {
+  catalogId?: string;
+  gtin?: string;
   id: string;
   name: string;
   strength: string;
@@ -45,6 +47,8 @@ export interface Course {
   helper?: string;
 }
 export interface Stock {
+  catalogId?: string;
+  gtin?: string;
   id: string;
   name: string;
   strength: string;
@@ -55,6 +59,7 @@ export interface Stock {
   expiry?: string;
 }
 export interface DoseLog {
+  allocations?: { stockId: string; qty: number }[];
   status: "taken" | "skipped" | "missed" | "snoozed";
   actor?: string;
   actorName?: string;
