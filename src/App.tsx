@@ -1,0 +1,1663 @@
+import {
+  useCallback,
+  useEffect,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
+import {
+  accounts,
+  actor,
+  addDays,
+  canViewCourse,
+  dateObj,
+  delayed,
+  events,
+  fmt,
+  hm,
+  isOwner,
+  KEY,
+  loadState,
+  markDose,
+  expireDoses,
+  setDemoTime,
+  resetDemoDose,
+  medKey,
+  mins,
+  record,
+  shopping,
+  signals,
+  uid,
+  undoDose,
+} from "./model";
+import type { AccountId, DoseEvent, State, Stock, View } from "./types";
+import { Button, Empty, Field, Heading, Icon, Modal } from "./components";
+import { Login } from "./Login";
+import { DoctorReport } from "./DoctorReport";
+import { PatientDrum } from "./PatientDrum";
+import { DemoClock } from "./DemoClock";
+import { ImportPrescription } from "./ImportPrescription";
+type Dialog =
+  | { type: "event"; event: DoseEvent }
+  | { type: "stock"; stock?: Stock }
+  | { type: "buy"; key: string }
+  | { type: "permissions"; id: string }
+  | {
+      type:
+        | "import"
+        | "patient"
+        | "contact"
+        | "settings"
+        | "clock"
+        | "about"
+        | "invite";
+    }
+  | { type: "end"; id: string };
+const tabs: { id: View; icon: string; label: string }[] = [
+  { id: "home", icon: "home", label: "Обзор" },
+  { id: "plan", icon: "calendar", label: "План" },
+  { id: "stock", icon: "box", label: "Аптечка" },
+  { id: "signals", icon: "bell", label: "Сигналы" },
+  { id: "family", icon: "users", label: "Семья" },
+];
+const allViews: View[] = [
+  "home",
+  "plan",
+  "stock",
+  "signals",
+  "family",
+  "courses",
+  "history",
+  "devices",
+  "doctor",
+];
+function getView(): View {
+  const v = location.hash.slice(1) as View;
+  return allViews.includes(v) ? v : "home";
+}
+export default function App() {
+  const [state, setState] = useState(loadState),
+    [account, setAccount] = useState<AccountId | null>(null),
+    [view, setView] = useState<View>(getView),
+    [dialog, setDialog] = useState<Dialog | null>(null),
+    [toast, setToast] = useState(""),
+    [selectedDate, setSelectedDate] = useState(state.day),
+    [filter, setFilter] = useState("all"),
+    [stockTab, setStockTab] = useState("stock"),
+    [query, setQuery] = useState("");
+  const [completedDose, setCompletedDose] = useState<DoseEvent | null>(null);
+  useEffect(() => {
+    if (!completedDose) return;
+    const timer = setTimeout(() => setCompletedDose(null), 1600);
+    return () => clearTimeout(timer);
+  }, [completedDose]);
+  useEffect(() => {
+    setCompletedDose(null);
+  }, [account, view]);
+  const close = useCallback(() => setDialog(null), []);
+  const change = (fn: (next: State) => void) =>
+    setState((prev) => {
+      const next = structuredClone(prev);
+      fn(next);
+      expireDoses(next);
+      return next;
+    });
+  useEffect(() => {
+    try {
+      localStorage.setItem(KEY, JSON.stringify(state));
+    } catch {
+      setToast("Не удалось сохранить данные в браузере.");
+    }
+  }, [state]);
+  useEffect(() => {
+    const onHash = () => {
+      setView(getView());
+      if (location.hash === "#login") {
+        setAccount(null);
+        setDialog(null);
+      }
+    };
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+  useEffect(() => {
+    if (toast) {
+      const id = setTimeout(() => setToast(""), 4500);
+      return () => clearTimeout(id);
+    }
+  }, [toast]);
+  useEffect(() => {
+    document.title = account
+      ? view === "doctor"
+        ? "Аптечка — история для врача"
+        : `Аптечка — ${accounts.find((a) => a.id === account)?.role}`
+      : "Аптечка — выбор аккаунта";
+  }, [account, view]);
+  const navigate = (v: View) => {
+    close();
+    setView(v);
+    location.hash = v;
+    window.scrollTo(0, 0);
+  };
+  const login = (id: AccountId) => {
+    change((s) => {
+      s.role = id;
+    });
+    setAccount(id);
+    setSelectedDate(state.day);
+    navigate("home");
+  };
+  const logout = () => {
+    close();
+    setAccount(null);
+    location.hash = "login";
+    setView("home");
+    window.scrollTo(0, 0);
+  };
+  const active = accounts.find((a) => a.id === account),
+    owner = isOwner(state),
+    me = actor(state),
+    ev = events(state),
+    sg = signals(state),
+    needs = shopping(state),
+    done = ev.filter((e) => e.log?.status === "taken").length;
+  const visibleAudit = state.audit.filter((a) => {
+    const c = state.courses.find(
+      (c) => c.id === (a.courseId || a.dose?.split("|")[0]),
+    );
+    return !c || canViewCourse(state, c);
+  });
+  const exportFile = (name: string, content: string, type = "text/plain") => {
+    const url = URL.createObjectURL(new Blob([content], { type })),
+      a = document.createElement("a");
+    a.href = url;
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+  const dose = (e: DoseEvent) => {
+    const taken = e.log?.status === "taken",
+      skip = e.log?.status === "skipped" || e.log?.status === "missed";
+    return (
+      <button
+        className={`dose-row dose-button ${delayed(state, e) || skip ? "uncertain" : ""}`}
+        key={e.id}
+        onClick={() => setDialog({ type: "event", event: e })}
+      >
+        <span className="time">{e.time}</span>
+        <span className="grow">
+          <span className="med-name">
+            <strong>{e.med.name}</strong>
+            <span className={`label ${skip ? "red" : taken ? "" : "gray"}`}>
+              {taken
+                ? "Отмечено"
+                : e.log?.status === "missed"
+                  ? "Не принято"
+                  : skip
+                    ? "Пропуск"
+                    : delayed(state, e)
+                      ? "Нет отметки"
+                      : "По плану"}
+            </span>
+          </span>
+          <span className="dose-meta">
+            {e.med.strength} · {e.med.dose} {e.med.unit} · {e.med.note}
+          </span>
+          {e.log?.actorName && (
+            <span className="dose-source">
+              {e.log.actorName} ·{" "}
+              {e.log.source === "observed"
+                ? "наблюдала лично"
+                : e.log.source === "timeout"
+                  ? "нет отметки за час"
+                  : e.log.source === "self"
+                    ? "отметила сама"
+                    : "со слов близкого"}
+            </span>
+          )}
+        </span>
+        <Icon name="chevron" />
+      </button>
+    );
+  };
+  const alert = (e: DoseEvent) => (
+    <section className="alert" key={e.id}>
+      <div className="row">
+        <span className="alert-icon">
+          <Icon name="alert" />
+        </span>
+        <div className="grow">
+          <h3>
+            {e.log?.status === "missed"
+              ? "Не принято за час"
+              : e.log?.status === "skipped"
+                ? "Приём пропущен"
+                : "Нет подтверждения приёма"}
+          </h3>
+          <p>
+            {e.med.name} · {e.time}
+          </p>
+        </div>
+      </div>
+      {state.signalState[e.id]?.owner && (
+        <p className="caption space">
+          Проверяет: {state.signalState[e.id].owner}
+        </p>
+      )}
+      <div className="alert-actions">
+        <Button onClick={() => setDialog({ type: "event", event: e })}>
+          Проверить ситуацию
+          <Icon name="arrow" />
+        </Button>
+      </div>
+    </section>
+  );
+  let content: ReactNode;
+  if (view === "doctor") {
+    content = <DoctorReport state={state} onBack={() => navigate("home")} />;
+  } else if (account === "senior") {
+    content = (
+      <>
+        <PatientDrum
+          events={ev}
+          clock={state.clock}
+          completed={completedDose}
+          onTake={(event) => {
+            const next = structuredClone(state);
+            if (
+              markDose(next, event.id, "taken", "self", "Отмечено пациентом")
+            ) {
+              setCompletedDose(event);
+              setState(next);
+            }
+          }}
+        />
+        <div className="patient-call-action">
+          <Button kind="soft" onClick={() => setDialog({ type: "contact" })}>
+            <Icon name="phone" />
+            Позвонить близким
+          </Button>
+        </div>
+        <div className="patient-doctor-action">
+          <Button kind="white" onClick={() => navigate("doctor")}>
+            <Icon name="clipboard" />
+            Показать врачу
+            <Icon name="arrow" />
+          </Button>
+        </div>
+      </>
+    );
+  } else if (view === "home")
+    content = (
+      <>
+        <Heading
+          title={owner ? "Как дела у мамы?" : "Забота о Нине Петровне"}
+          subtitle={
+            owner
+              ? "Самое важное о близком — с первого взгляда."
+              : "План на день и помощь с приёмом лекарств."
+          }
+        />
+        <section className="patient-card">
+          <div className="patient-person">
+            <span className="patient-avatar">НП</span>
+            <div>
+              <h2>{state.patient.name}</h2>
+              <p>
+                {state.patient.age} года · {state.patient.city}
+              </p>
+            </div>
+            <button
+              className="icon-btn"
+              aria-label="Профиль пациента"
+              onClick={() => setDialog({ type: "patient" })}
+            >
+              <Icon name="more" />
+            </button>
+          </div>
+          <div className="patient-status">
+            <span>
+              <i className="dot" />
+              План на сегодня
+            </span>
+            <strong>
+              {done} из {ev.length} приёмов отмечено
+            </strong>
+          </div>
+          <div className="mini-progress">
+            <span
+              style={{ width: `${ev.length ? (done / ev.length) * 100 : 0}%` }}
+            />
+          </div>
+        </section>
+        {sg.length ? (
+          alert(sg[0])
+        ) : (
+          <div className="quiet-card space">
+            <Icon name="check" />
+            <p>Все ситуации проверены</p>
+          </div>
+        )}
+        {owner && (
+          <button
+            className="import-entry"
+            onClick={() => setDialog({ type: "import" })}
+          >
+            <span className="scan-symbol">
+              <Icon name="file" />
+            </span>
+            <span>
+              <strong>Распознать назначение</strong>
+              <small>Из фото или PDF — в понятный план</small>
+            </span>
+            <span className="import-entry-arrow">
+              <Icon name="arrow" />
+            </span>
+          </button>
+        )}
+        <div className="quick-grid">
+          {(
+            [
+              {
+                id: "plan",
+                icon: "calendar",
+                title: "План лечения",
+                desc: "Расписание и отметки",
+              },
+              {
+                id: "stock",
+                icon: "box",
+                title: "Домашняя аптечка",
+                desc: `${needs.length} позиций к покупке`,
+              },
+              {
+                id: "family",
+                icon: "users",
+                title: "Круг заботы",
+                desc: "Кто помогает близкому",
+              },
+              {
+                id: "history",
+                icon: "heart",
+                title: "Журнал заботы",
+                desc: "Все события в одном месте",
+              },
+            ] as const
+          ).map((c) => (
+            <button
+              className="quick-card"
+              key={c.id}
+              onClick={() => navigate(c.id)}
+            >
+              <span className="quick-icon">
+                <Icon name={c.icon} />
+                <span className="arrow">
+                  <Icon name="arrow" />
+                </span>
+              </span>
+              <strong>{c.title}</strong>
+              <small>{c.desc}</small>
+            </button>
+          ))}
+        </div>
+        <div className="section-title">
+          <h2>Сегодня по плану</h2>
+          <button className="text-link" onClick={() => navigate("plan")}>
+            Все приёмы
+          </button>
+        </div>
+        <div className="card">{ev.map(dose)}</div>
+        <div className="section-title">
+          <h2>Последние события</h2>
+        </div>
+        <div className="card">
+          {visibleAudit.slice(0, 3).map((a) => (
+            <div className="care-activity" key={a.id}>
+              <span className="avatar">{a.title[0]}</span>
+              <div>
+                <h3>{a.title}</h3>
+                <p>
+                  {a.detail}
+                  <br />
+                  {a.time}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+        <button
+          className="future-card space"
+          onClick={() => navigate("devices")}
+        >
+          <span className="orb">
+            <Icon name="watch" />
+          </span>
+          <span>
+            <strong>Забота с помощью устройств</strong>
+            <p>Следующий этап продукта</p>
+          </span>
+          <Icon name="arrow" />
+        </button>
+      </>
+    );
+  else if (view === "plan") {
+    const start = addDays(
+        selectedDate,
+        -((dateObj(selectedDate).getDay() + 6) % 7),
+      ),
+      list = events(state, selectedDate).filter(
+        (e) =>
+          filter === "all" ||
+          !["taken", "skipped", "missed"].includes(e.log?.status || ""),
+      );
+    content = (
+      <>
+        <Heading
+          title="План лечения"
+          subtitle={`${state.patient.name} · ${fmt(selectedDate)}`}
+          action={
+            owner ? (
+              <button
+                className="icon-btn"
+                aria-label="Добавить назначение"
+                onClick={() => setDialog({ type: "import" })}
+              >
+                <Icon name="plus" />
+              </button>
+            ) : undefined
+          }
+        />
+        <div className="day-wrap">
+          <button
+            className="day-nav"
+            aria-label="Предыдущая неделя"
+            onClick={() => setSelectedDate(addDays(selectedDate, -7))}
+          >
+            ‹
+          </button>
+          {Array.from({ length: 7 }, (_, i) => {
+            const date = addDays(start, i);
+            return (
+              <button
+                key={date}
+                className={`day ${date === selectedDate ? "active" : ""}`}
+                onClick={() => setSelectedDate(date)}
+              >
+                <span>
+                  {dateObj(date).toLocaleDateString("ru", { weekday: "short" })}
+                </span>
+                <b>{dateObj(date).getDate()}</b>
+              </button>
+            );
+          })}
+          <button
+            className="day-nav"
+            aria-label="Следующая неделя"
+            onClick={() => setSelectedDate(addDays(selectedDate, 7))}
+          >
+            ›
+          </button>
+        </div>
+        <div className="segmented">
+          {[
+            ["all", "Все приёмы"],
+            ["pending", "Без отметки"],
+          ].map(([v, l]) => (
+            <button
+              key={v}
+              className={filter === v ? "active" : ""}
+              onClick={() => setFilter(v)}
+            >
+              {l}
+            </button>
+          ))}
+        </div>
+        <div className="card space">
+          {list.length ? (
+            list.map(dose)
+          ) : (
+            <Empty title="Приёмов нет">
+              На выбранную дату нет приёмов по этому фильтру
+            </Empty>
+          )}
+        </div>
+        <div className="stack space">
+          <Button kind="white" onClick={() => navigate("courses")}>
+            <Icon name="clipboard" />
+            Назначения врача
+          </Button>
+          <Button kind="white" onClick={() => navigate("history")}>
+            Журнал заботы
+          </Button>
+        </div>
+      </>
+    );
+  } else if (view === "stock")
+    content = (
+      <>
+        <Heading
+          title="Домашняя аптечка"
+          subtitle="Остатки дома и покупки на текущий курс."
+          action={
+            me.stock ? (
+              <button
+                className="icon-btn"
+                aria-label="Добавить препарат"
+                onClick={() => setDialog({ type: "stock" })}
+              >
+                <Icon name="plus" />
+              </button>
+            ) : undefined
+          }
+        />
+        <div className="segmented">
+          <button
+            className={stockTab === "stock" ? "active" : ""}
+            onClick={() => setStockTab("stock")}
+          >
+            Дома · {state.stock.length}
+          </button>
+          <button
+            className={stockTab === "buy" ? "active" : ""}
+            onClick={() => setStockTab("buy")}
+          >
+            Купить · {needs.length}
+          </button>
+        </div>
+        {stockTab === "stock" ? (
+          <>
+            <label className="search space">
+              <Icon name="search" />
+              <input
+                placeholder="Найти препарат"
+                aria-label="Поиск в аптечке"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+            </label>
+            <div className="card space">
+              {state.stock
+                .filter((s) =>
+                  (s.name + s.strength)
+                    .toLowerCase()
+                    .includes(query.toLowerCase()),
+                )
+                .map((s) => (
+                  <div className="list-item" key={s.id}>
+                    <span className="med-icon">
+                      <Icon name="pill" />
+                    </span>
+                    <div className="grow">
+                      <h3>{s.name}</h3>
+                      <p>
+                        {s.strength} · {s.form}
+                      </p>
+                      <p>
+                        {s.expiry
+                          ? "Годен до " + fmt(s.expiry)
+                          : "Срок годности не указан"}
+                      </p>
+                    </div>
+                    <span className="qty">
+                      {s.qty}
+                      <small>{s.unit}</small>
+                    </span>
+                    {me.stock && (
+                      <button
+                        className="icon-btn"
+                        aria-label={`Изменить ${s.name}`}
+                        onClick={() => setDialog({ type: "stock", stock: s })}
+                      >
+                        <Icon name="edit" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="hint space">
+              <Icon name="bag" />
+              <span>
+                Учитываем точную форму, дозировку, оставшийся курс и срок
+                годности запаса.
+              </span>
+            </div>
+            <div className="card space">
+              {needs.length ? (
+                needs.map((n) => (
+                  <div className="buy-card" key={medKey(n.med)}>
+                    <h3>
+                      {n.med.name} · {n.med.strength}
+                    </h3>
+                    <p>{n.med.form}</p>
+                    <div className="formula">
+                      На курс {n.needed} − дома {n.qty} ={" "}
+                      <strong>
+                        докупить {n.missing} {n.med.unit}
+                      </strong>
+                    </div>
+                    {n.packs && (
+                      <p>
+                        {n.packs} уп. по {n.pack} шт.
+                      </p>
+                    )}
+                    {me.stock && (
+                      <Button
+                        kind="soft"
+                        onClick={() =>
+                          setDialog({ type: "buy", key: medKey(n.med) })
+                        }
+                      >
+                        Пополнить аптечку
+                      </Button>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <Empty title="Всего хватает">
+                  Запаса достаточно на оставшийся курс
+                </Empty>
+              )}
+            </div>
+            <div className="space">
+              <Button
+                kind="white"
+                onClick={() =>
+                  exportFile(
+                    "Покупки.txt",
+                    needs
+                      .map(
+                        (n) =>
+                          `${n.med.name} ${n.med.strength} ${n.med.form}: ${n.missing} ${n.med.unit}`,
+                      )
+                      .join("\n"),
+                  )
+                }
+              >
+                Скачать список покупок
+              </Button>
+            </div>
+          </>
+        )}
+      </>
+    );
+  else if (view === "signals")
+    content = (
+      <>
+        <Heading
+          title="Сигналы семье"
+          subtitle={`${sg.length} ситуаций требуют внимания`}
+          action={
+            owner ? (
+              <button
+                className="icon-btn"
+                aria-label="Настройки сигналов"
+                onClick={() => setDialog({ type: "settings" })}
+              >
+                <Icon name="bell" />
+              </button>
+            ) : undefined
+          }
+        />
+        <div className="hint">
+          <Icon name="info" />
+          <span>
+            Отсутствие отметки не означает, что лекарство не принято. Уточните у
+            близкого.
+          </span>
+        </div>
+        {sg.length ? (
+          sg.map(alert)
+        ) : (
+          <Empty title="Все ситуации проверены">
+            Здесь появятся приёмы, требующие внимания
+          </Empty>
+        )}
+      </>
+    );
+  else if (view === "family")
+    content = (
+      <>
+        <Heading
+          title="Круг заботы"
+          subtitle="У каждого своя роль. У семьи — общая картина."
+          action={
+            owner ? (
+              <button
+                className="icon-btn"
+                aria-label="Добавить помощника"
+                onClick={() => setDialog({ type: "invite" })}
+              >
+                <Icon name="plus" />
+              </button>
+            ) : undefined
+          }
+        />
+        <div className="hint">
+          <Icon name="shield" />
+          <span>
+            Доступ предоставляется с согласия близкого или его законного
+            представителя.
+          </span>
+        </div>
+        <div className="card space">
+          <div className="person-card row">
+            <span className="avatar rose">Н</span>
+            <div className="grow">
+              <h3>{state.patient.name}</h3>
+              <p>Пациент</p>
+            </div>
+          </div>
+          {state.members.map((m) => (
+            <div className="person-card row" key={m.id}>
+              <span
+                className={`avatar ${m.role === "caregiver" ? "sand" : ""}`}
+              >
+                {m.name[0]}
+              </span>
+              <div className="grow">
+                <h3>{m.name}</h3>
+                <p>
+                  {m.id === "anna" ? "Менеджер лечения" : m.relation}
+                  {!m.view ? " · доступ отозван" : ""}
+                </p>
+              </div>
+              {owner && m.role !== "owner" && (
+                <button
+                  className="icon-btn"
+                  aria-label={`Доступ ${m.name}`}
+                  onClick={() => setDialog({ type: "permissions", id: m.id })}
+                >
+                  <Icon name="edit" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+        <div className="stack space">
+          <Button kind="soft" onClick={() => setDialog({ type: "contact" })}>
+            Связаться с близкими
+          </Button>
+          <Button kind="white" onClick={logout}>
+            Сменить аккаунт
+          </Button>
+        </div>
+      </>
+    );
+  else if (view === "courses")
+    content = (
+      <>
+        <Heading
+          title="Назначения врача"
+          subtitle="Из выписки — в понятный план для всей семьи."
+        />
+        {owner && (
+          <Button onClick={() => setDialog({ type: "import" })}>
+            <Icon name="upload" />
+            Распознать назначение
+          </Button>
+        )}
+        <div className="card space">
+          {state.courses
+            .filter((c) => canViewCourse(state, c))
+            .map((c) => (
+              <section className="course-card" key={c.id}>
+                <div className="between">
+                  <h3>{c.title}</h3>
+                  <span className={`label ${c.active ? "" : "gray"}`}>
+                    {c.active ? "Активен" : "Завершён"}
+                  </span>
+                </div>
+                <p>
+                  {fmt(c.start)} — {fmt(addDays(c.start, c.days - 1))}
+                </p>
+                <div className="course-meds">
+                  {c.meds.map((m) => (
+                    <div className="course-med" key={m.id}>
+                      <strong>
+                        {m.name} · {m.strength}
+                      </strong>
+                      <span>
+                        {m.dose} {m.unit} · {m.times.join(", ")} ·{" "}
+                        {m.days || c.days} дней
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                {owner && c.active && (
+                  <button
+                    className="text-link"
+                    onClick={() => setDialog({ type: "end", id: c.id })}
+                  >
+                    Завершить курс
+                  </button>
+                )}
+              </section>
+            ))}
+        </div>
+      </>
+    );
+  else if (view === "history")
+    content = (
+      <>
+        <Heading
+          title="Журнал заботы"
+          subtitle="Кто, когда и на каком основании сделал отметку."
+          action={
+            <button
+              className="icon-btn"
+              aria-label="Скачать журнал"
+              onClick={() =>
+                exportFile(
+                  "Журнал.json",
+                  JSON.stringify(visibleAudit, null, 2),
+                  "application/json",
+                )
+              }
+            >
+              <Icon name="download" />
+            </button>
+          }
+        />
+        <div className="hint gray">
+          <Icon name="users" />
+          <span>
+            Отметка человека не является объективным подтверждением приёма.
+          </span>
+        </div>
+        <div className="history space">
+          {visibleAudit.map((a) => (
+            <div className="history-item" key={a.id}>
+              <strong>{a.title}</strong>
+              <p>
+                {a.detail}
+                <br />
+                {fmt(a.date)} · {a.time}
+              </p>
+            </div>
+          ))}
+        </div>
+      </>
+    );
+  else
+    content = (
+      <>
+        <Heading
+          title="Устройства и наблюдение"
+          subtitle="Следующий этап продукта — отдельный пилот."
+        />
+        <div className="hint orange">
+          <Icon name="info" />
+          <span>
+            Интеграции пока не подключены. Здесь нет реальных измерений или
+            видео.
+          </span>
+        </div>
+        <div className="card space">
+          {[
+            ["watch", "Устройства здоровья"],
+            ["speaker", "Голосовой помощник"],
+            ["camera", "Наблюдение и связь"],
+          ].map(([i, t]) => (
+            <div className="device-card" key={i}>
+              <span className="med-icon">
+                <Icon name={i} />
+              </span>
+              <h3>{t}</h3>
+              <p>Планируется в следующих версиях</p>
+            </div>
+          ))}
+        </div>
+      </>
+    );
+  if (!account) return <Login onSelect={login} />;
+  const formData = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    return new FormData(e.currentTarget);
+  };
+  const saveStock = (e: FormEvent<HTMLFormElement>, old?: Stock) => {
+    const d = formData(e),
+      s: Stock = {
+        id: old?.id || uid(),
+        name: String(d.get("name")).trim(),
+        strength: String(d.get("strength")).trim(),
+        form: String(d.get("form")),
+        unit: d.get("form") === "Капсулы" ? "капс." : "табл.",
+        qty: Number(d.get("qty")),
+        pack: Number(d.get("pack")),
+        expiry: String(d.get("expiry")),
+      };
+    if (
+      !me.stock ||
+      !s.name ||
+      !s.strength ||
+      !Number.isFinite(s.qty) ||
+      s.qty < 0 ||
+      s.qty > 100000 ||
+      (s.qty * 4) % 1 ||
+      !Number.isInteger(s.pack) ||
+      s.pack < 1 ||
+      s.pack > 1000
+    ) {
+      setToast("Проверьте значения остатка и упаковки.");
+      return;
+    }
+    if (state.stock.some((st) => st.id !== s.id && medKey(st) === medKey(s))) {
+      setToast("Препарат уже есть в аптечке. Измените его остаток.");
+      return;
+    }
+    change((next) => {
+      if (old) next.stock = next.stock.map((st) => (st.id === old.id ? s : st));
+      else next.stock.push(s);
+      record(
+        next,
+        "stock",
+        me.name + " обновила аптечку",
+        s.name + " · " + s.qty + " " + s.unit,
+      );
+    });
+    close();
+    setToast("Остаток сохранён.");
+  };
+  let modal: ReactNode;
+  if (dialog?.type === "event") {
+    const e = dialog.event,
+      log = state.logs[e.id],
+      resolved = ["taken", "skipped", "missed"].includes(log?.status || ""),
+      past =
+        e.date < state.day ||
+        (e.date === state.day && mins(e.time) <= state.clock);
+    modal = (
+      <>
+        <div className="event-hero">
+          <span className="med-icon">
+            <Icon name="pill" />
+          </span>
+          <h2>
+            {e.med.name} · {e.med.strength}
+          </h2>
+          <p>
+            {e.med.dose} {e.med.unit} · {e.time}
+          </p>
+          <p>{e.med.note}</p>
+        </div>
+        {resolved ? (
+          <>
+            <div className="hint">
+              {log.status === "taken"
+                ? "Приём отмечен"
+                : log.status === "missed"
+                  ? "Не принято за час"
+                  : "Приём пропущен"}{" "}
+              · {log.actorName}
+              <br />
+              {log.note}
+            </div>
+            {log.status !== "missed" &&
+              me.mark &&
+              (owner || log.actor === state.role) && (
+                <div className="space">
+                  <Button
+                    kind="white"
+                    onClick={() => {
+                      change((s) => undoDose(s, e.id));
+                      close();
+                    }}
+                  >
+                    Отменить отметку
+                  </Button>
+                </div>
+              )}
+            {["skipped", "missed"].includes(log.status) &&
+              account !== "senior" && (
+                <div className="space">
+                  <Button
+                    onClick={() => {
+                      change((s) => {
+                        s.signalState[e.id] = {
+                          ...s.signalState[e.id],
+                          resolved: true,
+                          owner: me.name,
+                        };
+                        record(
+                          s,
+                          "resolve",
+                          me.name + " проверила пропуск",
+                          e.med.name,
+                          e.id,
+                        );
+                      });
+                      close();
+                    }}
+                  >
+                    Ситуация проверена
+                  </Button>
+                </div>
+              )}
+          </>
+        ) : past && me.mark ? (
+          <form
+            onSubmit={(event) => {
+              const d = formData(event);
+              change((s) => {
+                markDose(
+                  s,
+                  e.id,
+                  "taken",
+                  account === "senior" ? "self" : String(d.get("source")),
+                  String(d.get("note") || ""),
+                );
+              });
+              close();
+              setToast("Приём отмечен.");
+            }}
+          >
+            {account === "senior" ? (
+              <p className="senior-confirm">
+                Вы уже приняли лекарство? Подтвердите только состоявшийся приём.
+              </p>
+            ) : (
+              <>
+                <label className="field">
+                  <span>Как вы узнали о приёме?</span>
+                  <select name="source" required>
+                    <option value="">Выберите</option>
+                    <option value="observed">Наблюдала лично</option>
+                    <option value="reported">Со слов близкого</option>
+                  </select>
+                </label>
+                <Field label="Комментарий" name="note" required={false} />
+              </>
+            )}
+            <label className="check-row">
+              <input type="checkbox" required />
+              Подтверждаю, что лекарство принято
+            </label>
+            <div className="stack space">
+              <Button type="submit">
+                {account === "senior" ? "Да, приняла" : "Подтвердить приём"}
+              </Button>
+              <Button
+                kind="white"
+                onClick={() => {
+                  const reason = prompt("Причина пропуска");
+                  if (reason?.trim()) {
+                    change((s) => {
+                      markDose(s, e.id, "skipped", "", reason.trim());
+                    });
+                    close();
+                  }
+                }}
+              >
+                Отметить пропуск
+              </Button>
+              <Button
+                kind="white"
+                onClick={() => {
+                  change((s) => {
+                    s.logs[e.id] = {
+                      status: "snoozed",
+                      snoozedUntil: Math.min(1439, s.clock + 15),
+                    };
+                    record(
+                      s,
+                      "snooze",
+                      me.name + " отложила напоминание",
+                      e.med.name,
+                      e.id,
+                    );
+                  });
+                  close();
+                  setToast("Напоминание отложено на 15 минут.");
+                }}
+              >
+                Напомнить через 15 минут
+              </Button>
+            </div>
+          </form>
+        ) : (
+          <p className="caption">
+            {past
+              ? "В вашей роли отметки недоступны."
+              : "Время приёма ещё не наступило."}
+          </p>
+        )}
+        {!resolved && account !== "senior" && (
+          <div className="stack space">
+            <Button
+              kind="soft"
+              onClick={() => {
+                change((s) => {
+                  s.signalState[e.id] = {
+                    ...s.signalState[e.id],
+                    owner: me.name,
+                  };
+                  record(
+                    s,
+                    "claim",
+                    me.name + " проверяет ситуацию",
+                    e.med.name,
+                    e.id,
+                  );
+                });
+                close();
+              }}
+            >
+              Я проверю ситуацию
+            </Button>
+            <Button
+              kind="white"
+              onClick={() => {
+                change((s) => {
+                  s.signalState[e.id] = {
+                    ...s.signalState[e.id],
+                    requested: hm(s.clock),
+                  };
+                  record(
+                    s,
+                    "request",
+                    "Создан демо-запрос для сиделки",
+                    e.med.name,
+                    e.id,
+                  );
+                });
+                close();
+                setToast("Демо-запрос сохранён. Сообщение не отправлялось.");
+              }}
+            >
+              Запросить уточнение
+            </Button>
+          </div>
+        )}
+      </>
+    );
+  } else if (dialog?.type === "stock")
+    modal = (
+      <form onSubmit={(e) => saveStock(e, dialog.stock)}>
+        <Field label="Название" name="name" defaultValue={dialog.stock?.name} />
+        <Field
+          label="Дозировка"
+          name="strength"
+          defaultValue={dialog.stock?.strength}
+        />
+        <label className="field">
+          <span>Форма</span>
+          <select name="form" defaultValue={dialog.stock?.form || "Таблетки"}>
+            <option>Таблетки</option>
+            <option>Капсулы</option>
+          </select>
+        </label>
+        <div className="field-grid">
+          <Field
+            label="Остаток, штук"
+            name="qty"
+            type="number"
+            min={0}
+            max={100000}
+            step={0.25}
+            defaultValue={dialog.stock?.qty || 0}
+          />
+          <Field
+            label="Штук в упаковке"
+            name="pack"
+            type="number"
+            min={1}
+            max={1000}
+            step={1}
+            defaultValue={dialog.stock?.pack || 20}
+          />
+        </div>
+        <Field
+          label="Годен до"
+          name="expiry"
+          type="date"
+          defaultValue={dialog.stock?.expiry}
+        />
+        <Button type="submit">Сохранить</Button>
+      </form>
+    );
+  else if (dialog?.type === "buy") {
+    const n = needs.find((n) => medKey(n.med) === dialog.key);
+    modal = n ? (
+      <form
+        onSubmit={(e) => {
+          const d = formData(e),
+            qty = Number(d.get("qty")),
+            expiry = String(d.get("expiry"));
+          if (
+            !me.stock ||
+            !Number.isFinite(qty) ||
+            qty <= 0 ||
+            qty > 100000 ||
+            (qty * 4) % 1 ||
+            !expiry
+          )
+            return;
+          change((s) => {
+            const st = s.stock.find((st) => medKey(st) === dialog.key);
+            if (st) {
+              st.qty += qty;
+              st.expiry = st.expiry && st.expiry < expiry ? st.expiry : expiry;
+            } else
+              s.stock.push({
+                id: uid(),
+                name: n.med.name,
+                strength: n.med.strength,
+                form: n.med.form,
+                unit: n.med.unit,
+                qty,
+                pack: n.pack || 0,
+                expiry,
+              });
+            record(
+              s,
+              "stock",
+              me.name + " пополнила аптечку",
+              n.med.name + " · +" + qty,
+            );
+          });
+          close();
+          setToast("Запас обновлён.");
+        }}
+      >
+        <p>
+          Не хватает {n.missing} {n.med.unit}
+        </p>
+        <Field
+          label="Куплено, штук"
+          name="qty"
+          type="number"
+          min={0.25}
+          max={100000}
+          step={0.25}
+          defaultValue={n.packs && n.pack ? n.packs * n.pack : n.missing}
+        />
+        <Field label="Годен до" name="expiry" type="date" />
+        <Button type="submit">Добавить в аптечку</Button>
+      </form>
+    ) : null;
+  } else if (dialog?.type === "import")
+    modal = (
+      <ImportPrescription
+        state={state}
+        onSave={(course, stock) => {
+          change((s) => {
+            s.courses.push(course);
+            s.stock = stock;
+            record(s, "course", me.name + " запустила план", course.title);
+          });
+          close();
+          navigate("plan");
+          setToast("Проверенный план запущен.");
+        }}
+      />
+    );
+  else if (dialog?.type === "patient")
+    modal = (
+      <form
+        onSubmit={(e) => {
+          const d = formData(e);
+          if (!owner) return;
+          change((s) => {
+            s.patient = {
+              name: String(d.get("name")).trim(),
+              age: Number(d.get("age")),
+              city: String(d.get("city")).trim(),
+              short: String(d.get("short")).trim(),
+            };
+          });
+          close();
+        }}
+      >
+        <fieldset disabled={!owner}>
+          <Field label="Имя" name="name" defaultValue={state.patient.name} />
+          <Field
+            label="Возраст"
+            name="age"
+            type="number"
+            min={18}
+            max={120}
+            defaultValue={state.patient.age}
+          />
+          <Field label="Город" name="city" defaultValue={state.patient.city} />
+          <Field
+            label="Как называете близкого"
+            name="short"
+            defaultValue={state.patient.short}
+          />
+          {owner && <Button type="submit">Сохранить</Button>}
+        </fieldset>
+      </form>
+    );
+  else if (dialog?.type === "contact")
+    modal = (
+      <>
+        {state.members
+          .filter((m) => m.view && m.id !== state.role)
+          .map((m) => (
+            <div className="responsible" key={m.id}>
+              <span className="avatar">{m.name[0]}</span>
+              <div className="grow">
+                <strong>{m.name}</strong>
+                <p>{m.id === "anna" ? "Менеджер лечения" : m.relation}</p>
+              </div>
+              <Button
+                kind="soft"
+                onClick={() =>
+                  setToast(
+                    "Демо-звонок: " +
+                      m.name +
+                      ". Телефония пока не подключена.",
+                  )
+                }
+              >
+                <Icon name="phone" />
+                Позвонить
+              </Button>
+            </div>
+          ))}
+        <p className="caption">
+          В прототипе звонки демонстрируются без набора номера.
+        </p>
+      </>
+    );
+  else if (dialog?.type === "permissions") {
+    const m = state.members.find((m) => m.id === dialog.id);
+    modal = m ? (
+      <div className="permissions">
+        {(["view", "mark", "stock", "alerts"] as const).map((key, i) => (
+          <label className="permission" key={key}>
+            {
+              [
+                "Смотреть план и журнал",
+                "Отмечать приёмы",
+                "Менять остатки и покупки",
+                "Получать сигналы",
+              ][i]
+            }
+            <input
+              type="checkbox"
+              className="switch"
+              disabled={!owner || (key !== "view" && !m.view)}
+              checked={m[key]}
+              onChange={(e) =>
+                change((s) => {
+                  const member = s.members.find((m) => m.id === dialog.id)!;
+                  member[key] = e.target.checked;
+                  if (!member.view) {
+                    member.mark = false;
+                    member.stock = false;
+                    member.alerts = false;
+                  }
+                  record(
+                    s,
+                    "permission",
+                    me.name + " изменила доступ",
+                    member.name,
+                  );
+                })
+              }
+            />
+          </label>
+        ))}
+      </div>
+    ) : null;
+  } else if (dialog?.type === "invite")
+    modal = (
+      <form
+        onSubmit={(e) => {
+          const d = formData(e);
+          if (!owner) return;
+          change((s) => {
+            s.members.push({
+              id: uid(),
+              name: String(d.get("name")).trim(),
+              relation: String(d.get("relation")),
+              role: d.get("relation") === "Сиделка" ? "caregiver" : "family",
+              view: true,
+              mark: false,
+              stock: false,
+              alerts: true,
+            });
+            record(
+              s,
+              "invite",
+              me.name + " добавила помощника",
+              String(d.get("name")),
+            );
+          });
+          close();
+          setToast("Участник добавлен в этом браузере.");
+        }}
+      >
+        <Field label="Имя" name="name" />
+        <label className="field">
+          <span>Роль</span>
+          <select name="relation">
+            <option>Сиделка</option>
+            <option>Родственник</option>
+          </select>
+        </label>
+        <label className="check-row">
+          <input type="checkbox" required />
+          Подтверждаю согласие близкого или полномочия законного представителя
+        </label>
+        <Button type="submit">Добавить</Button>
+      </form>
+    );
+  else if (dialog?.type === "settings")
+    modal = (
+      <form
+        onSubmit={(e) => {
+          const d = formData(e);
+          if (!owner) return;
+          change((s) => {
+            s.settings.grace = Number(d.get("grace"));
+            s.settings.backup = String(d.get("backup"));
+          });
+          close();
+        }}
+      >
+        <label className="field">
+          <span>Сигнал через</span>
+          <select name="grace" defaultValue={state.settings.grace}>
+            {[15, 30, 60].map((n) => (
+              <option key={n} value={n}>
+                {n} минут без отметки
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="field">
+          <span>Резервный ответственный</span>
+          <select name="backup" defaultValue={state.settings.backup}>
+            {state.members
+              .filter((m) => m.view)
+              .map((m) => (
+                <option value={m.id} key={m.id}>
+                  {m.name}
+                </option>
+              ))}
+          </select>
+        </label>
+        <p className="caption">
+          Сигналы отображаются в приложении. Push и SMS пока не подключены.
+        </p>
+        <Button type="submit">Сохранить</Button>
+      </form>
+    );
+  else if (dialog?.type === "clock")
+    modal = (
+      <DemoClock
+        onReset={(id) => {
+          change((s) => {
+            resetDemoDose(s, id);
+          });
+          setCompletedDose(null);
+        }}
+        events={ev}
+        clock={state.clock}
+        onSelect={(minute) => {
+          if (!Number.isInteger(minute) || minute < 0 || minute > 1439) return;
+          change((s) => {
+            setDemoTime(s, minute);
+          });
+          setCompletedDose(null);
+          close();
+        }}
+      />
+    );
+  else if (dialog?.type === "end")
+    modal = (
+      <>
+        <p>
+          Приёмы курса исчезнут из расписания. Журнал сохранится. Завершайте
+          курс в соответствии с назначением врача.
+        </p>
+        <div className="stack space">
+          <Button
+            onClick={() => {
+              if (!owner) return;
+              change((s) => {
+                const c = s.courses.find((c) => c.id === dialog.id);
+                if (c) {
+                  c.active = false;
+                  record(s, "course", me.name + " завершила курс", c.title);
+                }
+              });
+              close();
+            }}
+          >
+            Завершить курс
+          </Button>
+          <Button kind="white" onClick={close}>
+            Отмена
+          </Button>
+        </div>
+      </>
+    );
+  else if (dialog?.type === "about")
+    modal = (
+      <div className="mini-article">
+        <p>
+          Семейная забота о близком: план лечения, отметки, запасы, роли и
+          журнал событий.
+        </p>
+        <p>
+          Данные сохраняются в этом браузере. Фото и PDF распознаются на
+          устройстве. Результат необходимо сверить с назначением врача.
+        </p>
+        <p>
+          Выбор аккаунта — демонстрационный вход. Серверная авторизация,
+          синхронизация, звонки и доставка push пока не подключены.
+        </p>
+        <a href="./analysis.html" target="_blank" rel="noreferrer">
+          Материалы и состав MVP
+        </a>
+      </div>
+    );
+  const dialogTitles: Record<Dialog["type"], string> = {
+    event: "Приём лекарства",
+    stock: "Домашний запас",
+    buy: "Пополнить аптечку",
+    import: "Распознать назначение",
+    patient: "Профиль близкого",
+    contact: "Связаться с близкими",
+    permissions: "Настроить доступ",
+    invite: "Добавить помощника",
+    settings: "Настройки сигналов",
+    clock: "Управление демо",
+    about: "Об Аптечке",
+    end: "Завершить курс?",
+  };
+  return (
+    <>
+      <div
+        className={`app ${account === "senior" ? "senior" : ""}`}
+        inert={!!dialog}
+      >
+        <header id="header">
+          <div className="between">
+            <a className="brand" href="#home" onClick={() => navigate("home")}>
+              <span className="brand-mark">
+                <Icon name="cross" />
+              </span>
+              аптечка
+            </a>
+            <button
+              className="profile-btn"
+              onClick={logout}
+              aria-label="Сменить аккаунт"
+            >
+              <span className={`avatar ${account === "elena" ? "sand" : ""}`}>
+                {me.name[0]}
+              </span>
+              <span className="profile-copy">
+                <strong>{me.name}</strong>
+                <small>{active?.role}</small>
+              </span>
+              <Icon name="chevron" />
+            </button>
+          </div>
+          <div className="header-note">
+            <span>
+              <i className="dot" />
+              Рядом, даже на расстоянии
+            </span>
+            <button
+              className="text-link demo-clock"
+              onClick={() => setDialog({ type: "clock" })}
+            >
+              <Icon name="clock" /> Демо · {hm(state.clock)}{" "}
+              <Icon name="chevron" />
+            </button>
+          </div>
+        </header>
+        <main id="main">
+          {content}
+          <div className="footnote">
+            Учебное демо · данные остаются в этом браузере
+            <br />
+            <button
+              className="text-link"
+              onClick={() => setDialog({ type: "about" })}
+            >
+              О прототипе и его возможностях
+            </button>
+          </div>
+        </main>
+        {account !== "senior" && (
+          <nav id="nav" aria-label="Основная навигация">
+            {tabs.map((t) => (
+              <button
+                key={t.id}
+                aria-label={t.label}
+                aria-current={view === t.id ? "page" : undefined}
+                className={view === t.id ? "active" : ""}
+                onClick={() => navigate(t.id)}
+              >
+                <Icon name={t.icon} />
+                <span>{t.label}</span>
+                {t.id === "signals" && sg.length > 0 && (
+                  <i className="nav-dot" />
+                )}
+              </button>
+            ))}
+          </nav>
+        )}
+      </div>
+      {dialog && (
+        <Modal title={dialogTitles[dialog.type]} onClose={close}>
+          {modal}
+        </Modal>
+      )}
+      {toast && (
+        <div id="toastRoot" role="status">
+          <div className="toast">{toast}</div>
+        </div>
+      )}
+    </>
+  );
+}

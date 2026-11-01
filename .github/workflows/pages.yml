@@ -17,14 +17,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - name: Check application syntax
-        run: |
-          node --check dist/app.js
-          node --check dist/import-flow.js
-          node --check dist/prescription-parser.js
-          node --check dist/prescription-reader.js
-      - name: Check prescription flow
-        run: node tests/prescription.test.cjs
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install pnpm
+        run: npm install --global pnpm@11.25.0
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Test application
+        run: pnpm test
+      - name: Type-check and build
+        run: pnpm build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4
         with:
