@@ -3,7 +3,7 @@ export type View =
   | "home"
   | "plan"
   | "stock"
-  | "signals"
+  | "chat"
   | "family"
   | "courses"
   | "history"
@@ -58,6 +58,26 @@ export interface Stock {
   pack: number;
   expiry?: string;
 }
+export interface CareTask {
+  id: string;
+  title: string;
+  time: string;
+  icon: string;
+  note?: string;
+}
+export interface ChatAttachment {
+  kind: "dose" | "care";
+  title: string;
+  detail: string;
+}
+export interface ChatMessage {
+  id: string;
+  sender: "elena" | "anna";
+  text: string;
+  date: string;
+  time: string;
+  attachment?: ChatAttachment;
+}
 export interface DoseLog {
   allocations?: { stockId: string; qty: number }[];
   status: "taken" | "skipped" | "missed" | "snoozed";
@@ -99,6 +119,9 @@ export interface State {
   signalState: Record<string, SignalState>;
   settings: { grace: number; backup: string; notifications: boolean };
   audit: Audit[];
+  careTasks: CareTask[];
+  careDone: Record<string, string>;
+  chat: ChatMessage[];
 }
 export interface DoseEvent {
   id: string;

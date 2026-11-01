@@ -5,6 +5,12 @@ interface Props {
   disabled?: boolean;
   completed: boolean;
   onComplete: () => void;
+  label?: string;
+  completedLabel?: string;
+  hint?: string;
+  completedHint?: string;
+  disabledHint?: string;
+  ariaLabel?: string;
 }
 
 /** A completed gesture confirms once; releasing early returns the handle home. */
@@ -12,6 +18,12 @@ export function SwipeToConfirm({
   disabled = false,
   completed,
   onComplete,
+  label = "Я приняла лекарство",
+  completedLabel = "Приём отмечен",
+  hint = "Проведите вправо, если уже приняли",
+  completedHint = "Готово! Вы позаботились о себе",
+  disabledHint = "Отметка станет доступна ко времени приёма",
+  ariaLabel = "Подтвердить приём лекарства свайпом вправо",
 }: Props) {
   const track = useRef<HTMLDivElement>(null);
   const drag = useRef<{ pointer: number; start: number; width: number } | null>(
@@ -78,21 +90,21 @@ export function SwipeToConfirm({
       >
         <span className="swipe-fill" aria-hidden="true" />
         <span className="swipe-label" aria-hidden="true">
-          {completed ? "Приём отмечен" : "Я приняла лекарство"}
+          {completed ? completedLabel : label}
         </span>
         <button
           type="button"
           className="swipe-handle"
           role="slider"
-          aria-label="Подтвердить приём лекарства свайпом вправо"
+          aria-label={ariaLabel}
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={completed ? 100 : Math.round(progress * 100)}
           aria-valuetext={
             completed
-              ? "Приём отмечен"
+              ? completedLabel
               : disabled
-                ? "Время приёма ещё не наступило"
+                ? disabledHint
                 : "Проведите вправо до конца. С клавиатуры нажмите Enter."
           }
           disabled={disabled || completed}
@@ -121,7 +133,7 @@ export function SwipeToConfirm({
         </button>
       </div>
       <span className="swipe-sr-status" role="status" aria-live="polite">
-        {completed ? "Приём отмечен" : ""}
+        {completed ? completedHint : disabled ? disabledHint : hint}
       </span>
     </div>
   );

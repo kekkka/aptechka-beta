@@ -1,5 +1,12 @@
 import { DEMO_MEDICATIONS, upgradeDemoMedications } from "./demo-medications";
-import type { State, AccountId, DoseEvent, Medication } from "./types";
+import type {
+  State,
+  AccountId,
+  DoseEvent,
+  Medication,
+  CareTask,
+  ChatAttachment,
+} from "./types";
 export const KEY = "aptechka_family_mobile_v1";
 export const uid = () => crypto.randomUUID();
 export function iso(d = new Date()) {
@@ -20,6 +27,29 @@ export const hm = (n: number) =>
 export const mins = (s: string) =>
   Number(s.slice(0, 2)) * 60 + Number(s.slice(3, 5));
 const DAY = iso();
+const CARE_TASKS: CareTask[] = [
+  {
+    id: "ct-feed",
+    title: "Покормить",
+    time: "12:00",
+    icon: "utensils",
+    note: "Обед · помочь с едой",
+  },
+  {
+    id: "ct-pressure",
+    title: "Замерить давление",
+    time: "13:00",
+    icon: "activity",
+    note: "Записать показатели в журнал",
+  },
+  {
+    id: "ct-walk",
+    title: "Прогулка",
+    time: "17:00",
+    icon: "sun",
+    note: "На свежем воздухе, если позволяет погода",
+  },
+];
 export const seed = (): State => ({
   version: 1,
   day: DAY,
@@ -156,6 +186,17 @@ export const seed = (): State => ({
       time: "08:03",
     },
   ],
+  careTasks: CARE_TASKS,
+  careDone: {},
+  chat: [
+    {
+      id: "chat-seed",
+      sender: "anna",
+      text: "Здравствуйте, Елена! Если по плану что-то идёт не так — напишите мне сюда.",
+      date: DAY,
+      time: "09:00",
+    },
+  ],
 });
 export const accounts: {
   id: AccountId;
@@ -200,6 +241,9 @@ export function loadState(): State {
     ) {
       upgradeDemoMedications(s);
       expireDoses(s);
+      if (!Array.isArray(s.careTasks)) s.careTasks = CARE_TASKS;
+      if (!s.careDone || typeof s.careDone !== "object") s.careDone = {};
+      if (!Array.isArray(s.chat)) s.chat = [];
       return s;
     }
   } catch {}
@@ -436,6 +480,52 @@ export function undoDose(s: State, id: string) {
     "Предыдущая отметка отменена",
     id,
   );
+}
+
+/** A care task can be completed within [time − 1 h, time + 1 h). */
+export const CARE_WINDOW_MINUTES = 60;
+export function careTaskWindow(task: CareTask, clock: number) {
+  const t = mins(task.time || "");
+  const valid = Number.isFinite(t);
+  const start = valid ? t - CARE_WINDOW_MINUTES : 0;
+  const end = valid ? t + CARE_WINDOW_MINUTES : 0;
+  return {
+    start,
+    end,
+    open: valid && clock >= start && clock < end,
+    before: valid && clock < start,
+    after: valid && clock >= end,
+  };
+}
+
+/** Mark a care task done for the current demo day (one-way, idempotent). */
+export function completeCareTask(s: State, id: string): boolean {
+  const task = s.careTasks.find((t) => t.id === id);
+  if (!task) return false;
+  if (!careTaskWindow(task, s.clock).open) return false;
+  if (s.careDone[id] === s.day) return false;
+  s.careDone[id] = s.day;
+  record(s, "care", actor(s).name + " выполнила задачу", task.title);
+  return true;
+}
+
+/** Append a message to the caregiver ↔ manager chat thread. */
+export function sendChat(
+  s: State,
+  text: string,
+  attachment?: ChatAttachment,
+): void {
+  const clean = text.trim();
+  if (!clean && !attachment) return;
+  s.chat.push({
+    id: uid(),
+    sender: s.role === "elena" ? "elena" : "anna",
+    text: clean,
+    date: s.day,
+    time: hm(s.clock),
+    attachment,
+  });
+  s.chat = s.chat.slice(-200);
 }
 
 /** A dose can be confirmed during [scheduled time, scheduled time + 60 min). */
