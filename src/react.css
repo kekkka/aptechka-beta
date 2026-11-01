@@ -2065,3 +2065,27 @@ nav#nav button > .react-icon {
     padding: 7px 8px;
   }
 }
+
+.brand .brand-logo {
+  display: block;
+  width: 145px;
+  height: auto;
+  max-width: 100%;
+}
+.login-brand .brand-logo {
+  display: block;
+  width: 185px;
+  height: auto;
+}
+.brand {
+  flex-shrink: 0;
+}
+.brand-logo {
+  object-fit: contain;
+  user-select: none;
+}
+@media (max-width: 359px) {
+  .brand .brand-logo {
+    width: 123px;
+  }
+}
