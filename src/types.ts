@@ -4,7 +4,6 @@ export type View =
   | "plan"
   | "stock"
   | "chat"
-  | "family"
   | "courses"
   | "history"
   | "devices"
