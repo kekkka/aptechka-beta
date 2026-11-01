@@ -27,6 +27,8 @@ import {
   record,
   shopping,
   signals,
+  completeCareTask,
+  sendChat,
   uid,
   undoDose,
 } from "./model";
@@ -37,6 +39,8 @@ import { DoctorReport } from "./DoctorReport";
 import { PatientDrum } from "./PatientDrum";
 import { DemoClock } from "./DemoClock";
 import { ImportPrescription } from "./ImportPrescription";
+import { CaregiverHome } from "./CaregiverHome";
+import { Chat } from "./Chat";
 type Dialog =
   | { type: "event"; event: DoseEvent }
   | { type: "stock"; stock?: Stock }
@@ -57,14 +61,14 @@ const tabs: { id: View; icon: string; label: string }[] = [
   { id: "home", icon: "home", label: "Обзор" },
   { id: "plan", icon: "calendar", label: "План" },
   { id: "stock", icon: "box", label: "Аптечка" },
-  { id: "signals", icon: "bell", label: "Сигналы" },
+  { id: "chat", icon: "chat", label: "Чат" },
   { id: "family", icon: "users", label: "Семья" },
 ];
 const allViews: View[] = [
   "home",
   "plan",
   "stock",
-  "signals",
+  "chat",
   "family",
   "courses",
   "history",
@@ -287,7 +291,20 @@ export default function App() {
         </div>
       </>
     );
-  } else if (view === "home")
+  } else if (view === "home" && account === "elena")
+    content = (
+      <CaregiverHome
+        state={state}
+        events={ev}
+        onOpenEvent={(e) => setDialog({ type: "event", event: e })}
+        onCompleteCare={(id) =>
+          change((s) => {
+            completeCareTask(s, id);
+          })
+        }
+      />
+    );
+  else if (view === "home")
     content = (
       <>
         <Heading
@@ -683,39 +700,16 @@ export default function App() {
         )}
       </>
     );
-  else if (view === "signals")
+  else if (view === "chat")
     content = (
-      <>
-        <Heading
-          title="Сигналы семье"
-          subtitle={`${sg.length} ситуаций требуют внимания`}
-          action={
-            owner ? (
-              <button
-                className="icon-btn"
-                aria-label="Настройки сигналов"
-                onClick={() => setDialog({ type: "settings" })}
-              >
-                <Icon name="bell" />
-              </button>
-            ) : undefined
-          }
-        />
-        <div className="hint">
-          <Icon name="info" />
-          <span>
-            Отсутствие отметки не означает, что лекарство не принято. Уточните у
-            близкого.
-          </span>
-        </div>
-        {sg.length ? (
-          sg.map(alert)
-        ) : (
-          <Empty title="Все ситуации проверены">
-            Здесь появятся приёмы, требующие внимания
-          </Empty>
-        )}
-      </>
+      <Chat
+        state={state}
+        onSend={(text, attachment) =>
+          change((s) => {
+            sendChat(s, text, attachment);
+          })
+        }
+      />
     );
   else if (view === "family")
     content = (
@@ -1617,16 +1611,18 @@ export default function App() {
         </header>
         <main id="main">
           {content}
-          <div className="footnote">
-            Учебное демо · данные остаются в этом браузере
-            <br />
-            <button
-              className="text-link"
-              onClick={() => setDialog({ type: "about" })}
-            >
-              О прототипе и его возможностях
-            </button>
-          </div>
+          {view !== "chat" && (
+            <div className="footnote">
+              Учебное демо · данные остаются в этом браузере
+              <br />
+              <button
+                className="text-link"
+                onClick={() => setDialog({ type: "about" })}
+              >
+                О прототипе и его возможностях
+              </button>
+            </div>
+          )}
         </main>
         {account !== "senior" && (
           <nav id="nav" aria-label="Основная навигация">
@@ -1640,9 +1636,6 @@ export default function App() {
               >
                 <Icon name={t.icon} />
                 <span>{t.label}</span>
-                {t.id === "signals" && sg.length > 0 && (
-                  <i className="nav-dot" />
-                )}
               </button>
             ))}
           </nav>

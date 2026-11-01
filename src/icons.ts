@@ -50,6 +50,12 @@ Object.assign(ICONS, {
   back: '<path d="m15 5-7 7 7 7"/>',
   send: '<path d="m22 2-7 20-4-9-9-4 20-7ZM22 2 11 13"/>',
   eye: '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>',
+  utensils:
+    '<path d="M7 3v7a2 2 0 0 0 2 2v9M17 3v7a2 2 0 0 1-2 2v9M7 8h2M15 8h2"/>',
+  activity: '<path d="M3 12h4l3 8 4-16 3 8h4"/>',
+  chat: '<path d="M21 12a8 8 0 0 1-8 8H6l-3 2V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8Z"/><path d="M9 10h6m-6 3h4"/>',
+  paperclip:
+    '<path d="m20 11-8 8a5 5 0 0 1-7-7l9-9a3.5 3.5 0 0 1 5 5l-9 9a2 2 0 0 1-3-3l8-8"/>',
 });
 export const icon = (name: string) =>
   `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ICONS.pill}</svg>`;
