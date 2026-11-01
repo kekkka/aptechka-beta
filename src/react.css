@@ -3005,3 +3005,218 @@ nav#nav button span {
     padding: 12px 14px;
   }
 }
+
+.stock-row {
+  display: flex;
+  align-items: center;
+  padding-right: 17px;
+}
+.stock-row + .stock-row {
+  border-top: 1px solid var(--line);
+}
+.stock-open {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 14px;
+}
+.stock-open:hover {
+  background: #f3f8fb;
+}
+.stock-open:focus-visible {
+  outline: 2px solid #6f9caf;
+  outline-offset: -3px;
+}
+.stock-summary-name {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+}
+.stock-summary-meta {
+  display: block;
+  font-size: 10px;
+  line-height: 1.6;
+  color: #8d9ba5;
+  margin-top: 3px;
+}
+.stock-row > .icon-btn {
+  flex-shrink: 0;
+}
+.medication-info-intro {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.medication-info-intro p {
+  margin: 0;
+  font-size: 18px;
+  color: #24556e;
+}
+.medication-info-intro p span {
+  display: block;
+  margin-top: 5px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: #728e9e;
+}
+.medication-info-stock {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  background: #eaf3f7;
+  border-radius: 18px;
+  padding: 17px;
+  margin: 22px 0;
+}
+.medication-info-stock small {
+  display: block;
+  font-size: 10px;
+  color: #718b9b;
+  margin-bottom: 7px;
+}
+.medication-info-stock strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 500;
+}
+.medication-info-description h3 {
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+.medication-info-description p {
+  font-size: 13px;
+  line-height: 1.7;
+  margin: 0;
+  color: #58768b;
+}
+.medication-info-fields {
+  margin: 20px 0;
+}
+.medication-info-fields > div {
+  padding: 12px 0;
+  border-bottom: 1px solid #e7eef2;
+}
+.medication-info-fields dt {
+  font-size: 10px;
+  color: #8a9faa;
+  margin-bottom: 6px;
+}
+.medication-info-fields dd {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  color: #365c72;
+}
+
+.sheets.sheets-bottom {
+  align-items: flex-end;
+  padding: 0;
+}
+.sheets-bottom .sheet {
+  margin: 0;
+  max-height: 88dvh;
+  border-radius: 30px 30px 0 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sheets-bottom .sheet {
+    animation: none;
+  }
+}
+
+.grls-info {
+  margin: 24px 0;
+  padding: 18px;
+  border: 1px solid #dce9f0;
+  border-radius: 18px;
+  background: #f3f8fb;
+}
+.grls-info > h3 {
+  font-size: 14px;
+  margin: 0 0 6px;
+}
+.grls-info .medication-info-fields {
+  margin: 8px 0;
+}
+.grls-documents,
+.grls-variant {
+  font-size: 12px;
+  margin-top: 12px;
+}
+.grls-documents summary,
+.grls-variant summary {
+  cursor: pointer;
+  color: #38647b;
+  line-height: 1.6;
+  padding: 5px 0;
+}
+.grls-documents h4 {
+  font-size: 11px;
+  margin: 14px 0 6px;
+}
+.grls-documents p {
+  white-space: pre-line;
+  font-size: 11px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+  color: #58768b;
+  margin: 0;
+}
+.grls-variant + .grls-variant {
+  border-top: 1px solid #dce9f0;
+  padding-top: 8px;
+}
+
+.instruction-purpose {
+  font-size: 17px;
+  line-height: 1.5;
+  color: #24556e;
+  margin: 0 0 7px;
+}
+.instruction-sections {
+  margin: 18px 0;
+}
+.instruction-sections > section {
+  padding: 15px 0;
+  border-top: 1px solid #e5eef3;
+}
+.instruction-sections h3 {
+  margin: 0 0 7px;
+  font-size: 14px;
+  color: #28596e;
+}
+.instruction-sections p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.75;
+  color: #58768b;
+}
+.instruction-note {
+  font-size: 11px;
+  line-height: 1.7;
+  color: #718b9b;
+}
+.instruction-original {
+  display: inline-block;
+  padding: 10px 0;
+  font-size: 13px;
+  color: #145f79;
+  text-underline-offset: 4px;
+}
+.medication-registry {
+  border-top: 1px solid #dce9f0;
+  margin-top: 22px;
+  padding-top: 8px;
+}
+.medication-registry > summary {
+  cursor: pointer;
+  font-size: 13px;
+  color: #476f85;
+  padding: 14px 0;
+}
