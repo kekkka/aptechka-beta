@@ -67,14 +67,12 @@ const tabs: { id: View; icon: string; label: string }[] = [
   { id: "plan", icon: "calendar", label: "План" },
   { id: "stock", icon: "box", label: "Аптечка" },
   { id: "chat", icon: "chat", label: "Чат" },
-  { id: "family", icon: "users", label: "Семья" },
 ];
 const allViews: View[] = [
   "home",
   "plan",
   "stock",
   "chat",
-  "family",
   "courses",
   "history",
   "devices",
@@ -393,12 +391,6 @@ export default function App() {
                   desc: `${needs.length} позиций к покупке`,
                 },
                 {
-                  id: "family",
-                  icon: "users",
-                  title: "Круг заботы",
-                  desc: "Кто помогает близкому",
-                },
-                {
                   id: "history",
                   icon: "heart",
                   title: "Журнал заботы",
@@ -575,75 +567,6 @@ export default function App() {
           })
         }
       />
-    );
-  else if (view === "family")
-    content = (
-      <>
-        <Heading
-          title="Круг заботы"
-          subtitle="У каждого своя роль. У семьи — общая картина."
-          action={
-            owner ? (
-              <button
-                className="icon-btn"
-                aria-label="Добавить помощника"
-                onClick={() => setDialog({ type: "invite" })}
-              >
-                <Icon name="plus" />
-              </button>
-            ) : undefined
-          }
-        />
-        <div className="hint">
-          <Icon name="shield" />
-          <span>
-            Доступ предоставляется с согласия близкого или его законного
-            представителя.
-          </span>
-        </div>
-        <div className="card space">
-          <div className="person-card row">
-            <span className="avatar rose">Н</span>
-            <div className="grow">
-              <h3>{state.patient.name}</h3>
-              <p>Пациент</p>
-            </div>
-          </div>
-          {state.members.map((m) => (
-            <div className="person-card row" key={m.id}>
-              <span
-                className={`avatar ${m.role === "caregiver" ? "sand" : ""}`}
-              >
-                {m.name[0]}
-              </span>
-              <div className="grow">
-                <h3>{m.name}</h3>
-                <p>
-                  {m.id === "anna" ? "Менеджер лечения" : m.relation}
-                  {!m.view ? " · доступ отозван" : ""}
-                </p>
-              </div>
-              {owner && m.role !== "owner" && (
-                <button
-                  className="icon-btn"
-                  aria-label={`Доступ ${m.name}`}
-                  onClick={() => setDialog({ type: "permissions", id: m.id })}
-                >
-                  <Icon name="edit" />
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-        <div className="stack space">
-          <Button kind="soft" onClick={() => setDialog({ type: "contact" })}>
-            Связаться с близкими
-          </Button>
-          <Button kind="white" onClick={logout}>
-            Сменить аккаунт
-          </Button>
-        </div>
-      </>
     );
   else if (view === "courses")
     content = (
