@@ -1,6 +1,6 @@
 import { Icon } from "./components";
 import { SwipeToConfirm } from "./SwipeToConfirm";
-import { mins, hm, DOSE_WINDOW_MINUTES } from "./model";
+import { mins, DOSE_WINDOW_MINUTES } from "./model";
 import type { DoseEvent } from "./types";
 
 interface Props {
@@ -36,9 +36,6 @@ export function PatientDrum({ events, clock, completed, onTake }: Props) {
         (b.log?.time || b.time).localeCompare(a.log?.time || a.time) ||
         b.time.localeCompare(a.time),
     )[0];
-  const missedCount = events.filter(
-    (e) => e.log?.status === "missed" || e.log?.status === "skipped",
-  ).length;
   const next = pending.find((e) => e.id !== current?.id);
   const slots = [
     { event: previous, slot: "previous" },
@@ -55,13 +52,6 @@ export function PatientDrum({ events, clock, completed, onTake }: Props) {
                 <Icon name="check" />
               </span>
               <h2>На сегодня всё!</h2>
-              <p>
-                {missedCount
-                  ? `${missedCount} приём(а) не принято. Семья увидит это в плане.`
-                  : "Все приёмы отмечены."}
-                <br />
-                Спасибо, что заботитесь о себе.
-              </p>
             </section>
           ) : (
             <div
@@ -161,14 +151,6 @@ export function PatientDrum({ events, clock, completed, onTake }: Props) {
                     disabled={!isCurrent}
                     onComplete={() => onTake(e)}
                   />
-                  {isCurrent && !success && (
-                    <p className="drum-window-deadline">
-                      Можно отметить до {hm(mins(e.time) + DOSE_WINDOW_MINUTES)}{" "}
-                      · осталось{" "}
-                      {Math.max(0, mins(e.time) + DOSE_WINDOW_MINUTES - clock)}{" "}
-                      мин
-                    </p>
-                  )}
                 </div>
               )}
             </div>
