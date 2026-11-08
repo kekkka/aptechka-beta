@@ -757,6 +757,82 @@ nav#nav button > .react-icon {
   position: relative;
   z-index: 1;
 }
+.today-progress {
+  display: block;
+  width: 100%;
+  text-align: left;
+  color: inherit;
+  margin-top: 18px;
+  padding: 22px;
+  border: 1px solid #dce8e5;
+  border-radius: 26px;
+  background: linear-gradient(130deg, #f1f7f3, #fff);
+}
+.today-progress-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+.today-progress-date {
+  display: block;
+  margin-bottom: 7px;
+  color: #758f89;
+  font-size: 11px;
+}
+.today-progress-title {
+  display: block;
+  font-size: 20px;
+  letter-spacing: -0.5px;
+}
+.today-progress-percent {
+  color: #4c8b74;
+  font-size: 30px;
+  font-weight: 500;
+  letter-spacing: -1px;
+}
+.today-progress-count {
+  display: block;
+  margin-top: 18px;
+  font-size: 14px;
+  color: #365c50;
+}
+.today-progress-track {
+  display: block;
+  height: 10px;
+  margin-top: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #dfebe5;
+}
+.today-progress-track > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #4c8b74, #8ab69b);
+}
+.today-progress-caption {
+  display: block;
+  margin-top: 12px;
+  color: #758f89;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.today-progress-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  margin-top: 18px;
+  padding: 14px 0 0;
+  border: 0;
+  border-top: 1px solid #dce8e5;
+  background: transparent;
+  color: #365c50;
+  text-align: left;
+  font-size: 12px;
+}
 .quick-card .quick-icon .arrow {
   width: 28px;
   height: 28px;
@@ -3894,6 +3970,27 @@ button.regular-event-summary {
 .monitor-device-list small { display:block; font-size:11px; color:#8da2af; margin-top:5px; }
 .monitor-device-list .monitor-caption { font-size:9px; margin:0; }
 .monitor-device-choices { display:grid; gap:12px; margin-top:20px; }
+.connected-devices {
+  padding: 22px;
+  border: 1px solid #dfe9e7;
+  border-radius: 25px;
+  background: #fff;
+}
+.connected-device-list { display: grid; gap: 12px; margin-top: 20px; }
+.connected-device { padding: 16px; border: 1px solid #e4edeb; border-radius: 19px; background: #f7faf9; }
+.connected-device-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.connected-device-heading .med-icon { width: 36px; height: 36px; flex-shrink: 0; background: #e8f1ec; color: #628b77; }
+.connected-device-heading > div { flex: 1; min-width: 100px; }
+.connected-device-heading h3 { font-size: 13px; font-weight: 600; }
+.connected-device-heading p { margin-top: 4px; color: #869ca2; font-size: 10px; line-height: 1.5; }
+.connected-device-status { display: inline-flex; align-items: center; gap: 5px; color: #628b77; font-size: 10px; }
+.connected-device-status i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.connected-device-reading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; margin-top: 18px; }
+.connected-device-reading strong { color: #365c50; font-size: 29px; font-weight: 500; letter-spacing: -1px; }
+.connected-device-reading > span { color: #869ca2; font-size: 11px; }
+.connected-device-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-top: 12px; color: #869ca2; font-size: 10px; }
+.connected-devices-note { margin-top: 16px; color: #869ca2; font-size: 11px; line-height: 1.6; }
+.connected-devices > .btn { width: 100%; margin-top: 14px; }
 .patient-monitoring .doctor-health-metrics { margin-top:20px; }
 @media (prefers-reduced-motion:reduce) { .monitor-call summary > .react-icon { transition:none; } }
 .monitor-schedule-summary { display:flex; align-items:center; justify-content:space-between; gap:14px; }

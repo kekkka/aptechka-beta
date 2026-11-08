@@ -78,6 +78,7 @@ import {
   planEventsForDate,
 } from "./plan-events";
 import { CaregiverHome } from "./CaregiverHome";
+import { TodayProgress } from "./TodayProgress";
 import { Chat } from "./Chat";
 import { UserProfile } from "./UserProfile";
 import { NotificationCenter } from "./NotificationCenter";
@@ -115,6 +116,7 @@ const tabs: { id: View; icon: string; label: string }[] = [
 ];
 const allViews: View[] = [
   "home",
+  "today",
   "plan",
   "edit-event",
   "stock",
@@ -227,8 +229,7 @@ export default function App() {
     me = actor(state),
     ev = events(state),
     sg = signals(state),
-    needs = shopping(state),
-    done = ev.filter((e) => e.log?.status === "taken").length;
+    needs = shopping(state);
   const visibleAudit = state.audit.filter((a) => {
     const c = state.courses.find(
       (c) => c.id === (a.courseId || a.dose?.split("|")[0]),
@@ -406,6 +407,25 @@ export default function App() {
         </Button>
       </>
     );
+  } else if (view === "today" && owner) {
+    content = (
+      <>
+        <button className="text-link" onClick={() => navigate("home")}>
+          <Icon name="back" />На главную
+        </button>
+        <CaregiverHome
+          state={state}
+          events={ev}
+          scheduledEvents={planEventsForDate(state, state.day).filter(event => !event.demo)}
+          onOpenPlanEvent={event => setDialog({
+            type: event.kind === "procedure" ? "procedure-event" : "sber-appointment",
+            event,
+          })}
+          onOpenEvent={event => setDialog({ type: "event", event })}
+          onCompleteCare={id => change(next => { completeCareTask(next, id); })}
+        />
+      </>
+    );
   } else if (view === "devices") {
     content = owner ? <PatientMonitoring state={state} onBack={() => navigate("home")} onSave={schedule => { const next = structuredClone(state); if (!saveCallSchedule(next, schedule)) return false; setState(next); return true; }} /> : <Empty title="Мониторинг доступен менеджеру лечения">Вернитесь на главный экран.</Empty>;
   } else if (view === "doctor") {
@@ -477,50 +497,25 @@ export default function App() {
       <StockSummary state={state} onOpen={() => navigate("stock")} />
       </>
     );
+  else if (view === "home" && owner)
+    content = (
+      <>
+        <Heading
+          title="Как дела у мамы?"
+          subtitle="Самое важное о близком — с первого взгляда."
+        />
+        <PatientCondition state={state} onOpen={() => navigate("devices")} />
+        <TodayProgress state={state} onOpen={() => navigate("today")} />
+        <StockSummary state={state} onOpen={() => navigate("stock")} />
+      </>
+    );
   else if (view === "home")
     content = (
       <>
         <Heading
-          title={owner ? "Как дела у мамы?" : "Забота о Нине Петровне"}
-          subtitle={
-            owner
-              ? "Самое важное о близком — с первого взгляда."
-              : "План на день и помощь с приёмом лекарств."
-          }
+          title="Забота о Нине Петровне"
+          subtitle="План на день и помощь с приёмом лекарств."
         />
-        <section className="patient-card">
-          <div className="patient-person">
-            <span className="patient-avatar">НП</span>
-            <div>
-              <h2>{state.patient.name}</h2>
-              <p>
-                {state.patient.age} года · {state.patient.city}
-              </p>
-            </div>
-            <button
-              className="icon-btn"
-              aria-label="Профиль пациента"
-              onClick={() => setDialog({ type: "patient" })}
-            >
-              <Icon name="more" />
-            </button>
-          </div>
-          <div className="patient-status">
-            <span>
-              <i className="dot" />
-              План на сегодня
-            </span>
-            <strong>
-              {done} из {ev.length} приёмов отмечено
-            </strong>
-          </div>
-          <div className="mini-progress">
-            <span
-              style={{ width: `${ev.length ? (done / ev.length) * 100 : 0}%` }}
-            />
-          </div>
-        </section>
-        <PatientCondition state={state} onOpen={() => { navigate("devices"); }} />
         {sg.length ? (
           alert(sg[0])
         ) : (
@@ -528,23 +523,6 @@ export default function App() {
             <Icon name="check" />
             <p>Все ситуации проверены</p>
           </div>
-        )}
-        {owner && (
-          <button
-            className="import-entry"
-            onClick={() => setDialog({ type: "import" })}
-          >
-            <span className="scan-symbol">
-              <Icon name="file" />
-            </span>
-            <span>
-              <strong>Распознать назначение</strong>
-              <small>Из фото или PDF — в понятный план</small>
-            </span>
-            <span className="import-entry-arrow">
-              <Icon name="arrow" />
-            </span>
-          </button>
         )}
         {!owner && (
           <div className="quick-grid">
@@ -613,19 +591,21 @@ export default function App() {
             </div>
           ))}
         </div>
-        <button
-          className="future-card space"
-          onClick={() => navigate("devices")}
-        >
-          <span className="orb">
-            <Icon name="watch" />
-          </span>
-          <span>
-            <strong>Мониторинг состояния</strong>
-            <p>Самочувствие, звонки и устройства</p>
-          </span>
-          <Icon name="arrow" />
-        </button>
+        {!owner && (
+          <button
+            className="future-card space"
+            onClick={() => navigate("devices")}
+          >
+            <span className="orb">
+              <Icon name="watch" />
+            </span>
+            <span>
+              <strong>Мониторинг состояния</strong>
+              <p>Самочувствие, звонки и устройства</p>
+            </span>
+            <Icon name="arrow" />
+          </button>
+        )}
       </>
     );
   else if (view === "plan" || (view === "edit-event" && caregiver)) {
@@ -1821,12 +1801,12 @@ export default function App() {
                 key={t.id}
                 aria-label={t.label}
                 aria-current={
-                  view === t.id || (t.id === "plan" && view === "edit-event")
+                  view === t.id || (t.id === "home" && view === "today") || (t.id === "plan" && view === "edit-event")
                     ? "page"
                     : undefined
                 }
                 className={
-                  view === t.id || (t.id === "plan" && view === "edit-event")
+                  view === t.id || (t.id === "home" && view === "today") || (t.id === "plan" && view === "edit-event")
                     ? "active"
                     : ""
                 }

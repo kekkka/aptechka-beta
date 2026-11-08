@@ -1,6 +1,7 @@
 export type AccountId = "senior" | "elena" | "anna";
 export type View =
   | "home"
+  | "today"
   | "plan"
   | "edit-event"
   | "stock"

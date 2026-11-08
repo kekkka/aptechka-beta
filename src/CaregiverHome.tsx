@@ -2,23 +2,28 @@ import { useState } from "react";
 import { fmt, hm, careTaskWindow } from "./model";
 import { Icon, Heading, Modal } from "./components";
 import { SwipeToConfirm } from "./SwipeToConfirm";
-import type { CareTask, DoseEvent, State } from "./types";
+import type { CareTask, DoseEvent, PlanEvent, State } from "./types";
 
 interface Props {
   state: State;
   events: DoseEvent[];
   onOpenEvent: (e: DoseEvent) => void;
+  scheduledEvents?: PlanEvent[];
+  onOpenPlanEvent?: (event: PlanEvent) => void;
   onCompleteCare: (id: string) => void;
 }
 
 type TodoItem =
   | { kind: "dose"; time: string; event: DoseEvent }
-  | { kind: "care"; time: string; task: CareTask };
+  | { kind: "care"; time: string; task: CareTask }
+  | { kind: "scheduled"; time: string; event: PlanEvent };
 
 export function CaregiverHome({
   state,
   events,
   onOpenEvent,
+  scheduledEvents = [],
+  onOpenPlanEvent,
   onCompleteCare,
 }: Props) {
   const [confirmTask, setConfirmTask] = useState<CareTask | null>(null);
@@ -26,6 +31,11 @@ export function CaregiverHome({
   const items: TodoItem[] = [
     ...events.map((event) => ({
       kind: "dose" as const,
+      time: event.time,
+      event,
+    })),
+    ...scheduledEvents.map((event) => ({
+      kind: "scheduled" as const,
       time: event.time,
       event,
     })),
@@ -39,7 +49,9 @@ export function CaregiverHome({
   const isDone = (item: TodoItem) =>
     item.kind === "dose"
       ? item.event.log?.status === "taken"
-      : state.careDone[item.task.id] === state.day;
+      : item.kind === "scheduled"
+        ? !!item.event.completedBy
+        : state.careDone[item.task.id] === state.day;
 
   const doneCount = items.filter(isDone).length;
   const total = items.length;
@@ -122,6 +134,36 @@ export function CaregiverHome({
               </button>
             );
           }
+          if (item.kind === "scheduled") {
+            const event = item.event;
+            return (
+              <button
+                key={event.id}
+                className={`todo-item ${done ? "done" : ""}`}
+                onClick={() => onOpenPlanEvent?.(event)}
+              >
+                <time className="todo-time">{event.time}</time>
+                <span className="todo-icon">
+                  <Icon
+                    name={event.kind === "procedure" ? "heart" : "calendar"}
+                  />
+                </span>
+                <span className="todo-copy">
+                  <strong>{event.title}</strong>
+                  {event.note && <small>{event.note}</small>}
+                </span>
+                <span className="todo-status">
+                  {done ? (
+                    <span className="todo-check on">
+                      <Icon name="check" />
+                    </span>
+                  ) : (
+                    <Icon name="chevron" />
+                  )}
+                </span>
+              </button>
+            );
+          }
           const t = item.task;
           const window = careTaskWindow(t, state.clock);
           return (
@@ -174,7 +216,8 @@ export function CaregiverHome({
               <p className="care-confirm-note">{confirmTask.note}</p>
             )}
             <p className="care-confirm-window">
-              Окно выполнения: до {hm(careTaskWindow(confirmTask, state.clock).end)}
+              Окно выполнения: до{" "}
+              {hm(careTaskWindow(confirmTask, state.clock).end)}
             </p>
             <SwipeToConfirm
               label="Процедура выполнена"

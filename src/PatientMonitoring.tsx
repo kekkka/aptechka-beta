@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { State } from "./types";
 import { Button, Heading, Icon, Modal } from "./components";
 import { HealthMetrics } from "./HealthMetrics";
+import { ConnectedDevices } from "./ConnectedDevices";
 import { callSchedule, latestCondition, type PatientCallSchedule } from "./monitoring";
 
 export function PatientCondition({ state, onOpen }: { state: State; onOpen: () => void }) {
@@ -44,12 +45,7 @@ export function PatientMonitoring({ state, onBack, onSave }: {
       </div><Button kind="white" onClick={() => { setSchedule(callSchedule(state)); setMessage(""); setEditingSchedule(true); }}><Icon name="edit" />Настроить</Button></div>
       {!editingSchedule && message && <p className="monitor-save-message" role="status">{message}</p>}
     </section>
-    <section className="monitor-section">
-      <div className="monitor-section-heading"><h2>Устройства</h2><span className="monitor-demo">Не подключены</span></div>
-      <p className="monitor-caption">Место для подключения источников измерений</p>
-      <div className="monitor-device-list">{[["heart", "Тонометр", "Артериальное давление"], ["watch", "Смарт-часы", "Пульс"], ["activity", "Пульсоксиметр", "Сатурация"]].map(([icon, title, metric]) => <div key={title}><span className="med-icon"><Icon name={icon} /></span><span><strong>{title}</strong><small>{metric}</small></span><span className="monitor-caption">Не подключено</span></div>)}</div>
-      <Button kind="white" onClick={() => { setDevice(""); setConnecting(true); }}><Icon name="plus" />Подключить устройство</Button>
-    </section>
+    <ConnectedDevices clock={state.clock} onAdd={() => { setDevice(""); setConnecting(true); }} />
     <section className="monitor-section"><div className="segmented"><button className={days === 1 ? "active" : ""} onClick={() => setDays(1)}>День</button><button className={days === 7 ? "active" : ""} onClick={() => setDays(7)}>Неделя</button></div><HealthMetrics day={state.day} clock={state.clock} days={days} iot /></section>
     {editingSchedule && <Modal title="Расписание звонков" onClose={() => { setEditingSchedule(false); setMessage(""); }}><div className="monitor-schedule-editor">      <form onSubmit={event => { event.preventDefault(); if (onSave(schedule)) { setEditingSchedule(false); setMessage("Расписание сохранено."); } else setMessage("Проверьте интервал, временное окно и повторяющиеся времена."); }}>
         <div className="segmented space"><button type="button" className={schedule.mode === "interval" ? "active" : ""} onClick={() => update({ mode: "interval" })}>По интервалу</button><button type="button" className={schedule.mode === "times" ? "active" : ""} onClick={() => update({ mode: "times" })}>В определённое время</button></div>
