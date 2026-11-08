@@ -54,7 +54,7 @@ export function Login({ onSelect }: { onSelect: (id: AccountId) => void }) {
         <Icon name="shield" />
         Вход в один клик, без логина и пароля
       </p>
-      <p className="login-footer">Одна семья. Общая забота.</p>
+      <p className="login-footer">План лечения, приёмы и запасы лекарств</p>
     </main>
   );
 }

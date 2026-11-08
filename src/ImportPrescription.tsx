@@ -516,7 +516,7 @@ export function ImportPrescription({
             <span className="scan-symbol">
               <Icon name="check" />
             </span>
-            <h3>Всё готово для заботы</h3>
+            <h3>План готов к запуску</h3>
             <p>{meds.length} препаратов в проверенном плане</p>
           </div>
           <label className="field">

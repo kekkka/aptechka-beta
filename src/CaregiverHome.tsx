@@ -61,7 +61,7 @@ export function CaregiverHome({
           </span>
           <p>
             {doneCount === total
-              ? "Всё на сегодня сделано. Спасибо за заботу."
+              ? "Все приёмы и задачи на сегодня отмечены."
               : upcoming
                 ? `Ближайшее — ${upcoming.time}. Осталось ${total - doneCount} ${
                     total - doneCount === 1 ? "задача" : "задачи"

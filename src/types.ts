@@ -7,6 +7,7 @@ export type View =
   | "courses"
   | "history"
   | "devices"
+  | "profile"
   | "doctor";
 export interface Member {
   id: string;

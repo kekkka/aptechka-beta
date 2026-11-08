@@ -45,6 +45,7 @@ import { DemoClock } from "./DemoClock";
 import { ImportPrescription } from "./ImportPrescription";
 import { CaregiverHome } from "./CaregiverHome";
 import { Chat } from "./Chat";
+import { UserProfile } from "./UserProfile";
 type Dialog =
   | { type: "event"; event: DoseEvent }
   | { type: "stock"; stock?: Stock }
@@ -77,6 +78,7 @@ const allViews: View[] = [
   "history",
   "devices",
   "doctor",
+  "profile",
 ];
 function getView(): View {
   const v = location.hash.slice(1) as View;
@@ -90,6 +92,7 @@ export default function App() {
     [toast, setToast] = useState(""),
     [selectedDate, setSelectedDate] = useState(state.day),
     [filter, setFilter] = useState("all");
+  const [profileReturn, setProfileReturn] = useState<View>("home");
   const [completedDose, setCompletedDose] = useState<DoseEvent | null>(null);
   useEffect(() => {
     if (!completedDose) return;
@@ -136,7 +139,9 @@ export default function App() {
     document.title = account
       ? view === "doctor"
         ? "Аптечка — история для врача"
-        : `Аптечка — ${accounts.find((a) => a.id === account)?.role}`
+        : view === "profile"
+          ? `Аптечка — профиль · ${accounts.find((a) => a.id === account)?.role}`
+          : `Аптечка — ${accounts.find((a) => a.id === account)?.role}`
       : "Аптечка — выбор аккаунта";
   }, [account, view]);
   const navigate = (v: View) => {
@@ -259,7 +264,21 @@ export default function App() {
     </section>
   );
   let content: ReactNode;
-  if (view === "doctor") {
+  if (view === "profile" && account) {
+    content = (
+      <UserProfile
+        state={state}
+        account={account}
+        onBack={() => navigate(profileReturn)}
+        onNavigate={navigate}
+        onEditPatient={() => setDialog({ type: "patient" })}
+        onContacts={() => setDialog({ type: "contact" })}
+        onSettings={() => setDialog({ type: "settings" })}
+        onInvite={() => setDialog({ type: "invite" })}
+        onLogout={logout}
+      />
+    );
+  } else if (view === "doctor") {
     content = <DoctorReport state={state} onBack={() => navigate("home")} />;
   } else if (account === "senior") {
     content = (
@@ -393,7 +412,7 @@ export default function App() {
                 {
                   id: "history",
                   icon: "heart",
-                  title: "Журнал заботы",
+                  title: "Журнал действий",
                   desc: "Все события в одном месте",
                 },
               ] as const
@@ -542,7 +561,7 @@ export default function App() {
             Назначения врача
           </Button>
           <Button kind="white" onClick={() => navigate("history")}>
-            Журнал заботы
+            Журнал действий
           </Button>
         </div>
       </>
@@ -625,7 +644,7 @@ export default function App() {
     content = (
       <>
         <Heading
-          title="Журнал заботы"
+          title="Журнал действий"
           subtitle="Кто, когда и на каком основании сделал отметку."
           action={
             <button
@@ -1276,7 +1295,7 @@ export default function App() {
     modal = (
       <div className="mini-article">
         <p>
-          Семейная забота о близком: план лечения, отметки, запасы, роли и
+          Контроль лечения: план приёмов, отметки, запасы лекарств, роли и
           журнал событий.
         </p>
         <p>
@@ -1321,8 +1340,12 @@ export default function App() {
             </a>
             <button
               className="profile-btn"
-              onClick={logout}
-              aria-label="Сменить аккаунт"
+              onClick={() => {
+                if (view !== "profile") setProfileReturn(view);
+                navigate("profile");
+              }}
+              aria-label={`Открыть профиль: ${me.name}`}
+              aria-current={view === "profile" ? "page" : undefined}
             >
               <span className={`avatar ${account === "elena" ? "sand" : ""}`}>
                 {me.name[0]}

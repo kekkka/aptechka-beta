@@ -21,7 +21,7 @@ export function SwipeToConfirm({
   label = "Я приняла лекарство",
   completedLabel = "Приём отмечен",
   hint = "Проведите вправо, если уже приняли",
-  completedHint = "Готово! Вы позаботились о себе",
+  completedHint = "Приём лекарства отмечен",
   disabledHint = "Отметка станет доступна ко времени приёма",
   ariaLabel = "Подтвердить приём лекарства свайпом вправо",
 }: Props) {
