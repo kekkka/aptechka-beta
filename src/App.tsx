@@ -1734,7 +1734,12 @@ export default function App() {
       >
         <header id="header">
           <div className="between">
-            <a className="brand" href="#home" onClick={() => navigate("home")}>
+            <a
+              className="brand"
+              href="#login"
+              onClick={logout}
+              aria-label="Аптечка — выбор роли для демо"
+            >
               <BrandLogo />
             </a>
             <div className="header-account-actions">
