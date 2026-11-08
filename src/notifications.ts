@@ -1,4 +1,5 @@
 import { fmt, medKey, shopping, signals } from "./model";
+import { inventoryItems } from "./inventory";
 import type { State } from "./types";
 
 export type NotificationKind = "caregiver" | "patient" | "stock" | "health";
@@ -56,11 +57,12 @@ export function careNotifications(state: State): CareNotification[] {
       action: "plan",
     };
   });
+  const inventory = inventoryItems(state);
   const stock: CareNotification[] = shopping(state).map((need) => ({
     id: `stock:${medKey(need.med)}`,
     kind: "stock",
     title: `Нужно докупить: ${need.med.name}`,
-    text: `${need.med.strength} · не хватает ${need.missing} ${need.med.unit}${need.packs ? ` (около ${need.packs} уп.)` : ""}`,
+    text: `${need.med.strength} · дома ${inventory.find((item) => item.key === medKey(need.med))?.qty ?? 0} ${need.med.unit} · докупить ${need.missing} ${need.med.unit}${need.packs ? ` (около ${need.packs} уп.)` : ""}`,
     source: "Домашняя аптечка · расчёт по плану лечения",
     detail: `На оставшийся курс до ${fmt(need.end)} нужно ${need.needed} ${need.med.unit} Учтено пригодного запаса: ${need.qty} ${need.med.unit} После пополнения потребность пересчитается.`,
     action: "stock",

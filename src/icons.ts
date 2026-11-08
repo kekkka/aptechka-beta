@@ -1,4 +1,5 @@
 const ICONS: Record<string, string> = {
+  location: '<path d="m21 3-6 18-4-8-8-4L21 3Z"/>',
   cross: '<path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6z"/>',
   calendar:
     '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M16 3v4M8 3v4M3 11h18m-13 5 2 2 5-5"/>',

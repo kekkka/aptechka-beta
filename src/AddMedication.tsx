@@ -8,23 +8,26 @@ import {
 import type { CatalogProduct } from "./catalog";
 import { normalizeGtin, normalizeRegistration, quantityToAdd } from "./catalog";
 import { BarcodeScanner } from "./BarcodeScanner";
+import { ManualMedication } from "./ManualMedication";
+import type { StockInput } from "./inventory";
 import { Button, Icon } from "./components";
 export function AddMedication({
   day,
   initialQuery = "",
   onSave,
+  onManualSave,
 }: {
   day: string;
   initialQuery?: string;
   onSave: (product: CatalogProduct, qty: number, expiry: string) => boolean;
+  onManualSave: (input: StockInput) => boolean;
 }) {
-  const [mode, setMode] = useState<"name" | "code" | "scan">("name");
+  const [mode, setMode] = useState<"name" | "code" | "scan" | "manual">("name");
   const [query, setQuery] = useState(initialQuery);
   const [products, setProducts] = useState<CatalogProduct[]>([]);
   const [selected, setSelected] = useState<CatalogProduct | null>(null);
   const [amountMode, setAmountMode] = useState<"units" | "packs">("units");
   const [amount, setAmount] = useState("1");
-  const [expiry, setExpiry] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [retry, setRetry] = useState(0);
@@ -64,7 +67,7 @@ export function AddMedication({
   }, []);
   useEffect(() => {
     const id = ++request.current;
-    if (mode === "scan") {
+    if (mode === "scan" || mode === "manual") {
       setLoading(false);
       return;
     }
@@ -106,9 +109,10 @@ export function AddMedication({
     setQuery("");
     setError("");
   };
-  const submit = (event: FormEvent) => {
+  const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!selected || savingRef.current) return;
+    const expiry = String(new FormData(event.currentTarget).get("expiry") || "");
     const qty = quantityToAdd(selected, Number(amount), amountMode);
     if (qty === null || !expiry || expiry < day) {
       setError("Проверьте количество и срок годности.");
@@ -196,8 +200,7 @@ export function AddMedication({
             required
             type="date"
             min={day}
-            value={expiry}
-            onChange={(e) => setExpiry(e.target.value)}
+            name="expiry"
           />
         </label>
         <p className="catalog-meta">
@@ -237,8 +240,9 @@ export function AddMedication({
           <Icon name="edit" />
           Ввести код
         </button>
+        <button className={mode === "manual" ? "active" : ""} onClick={() => switchMode("manual")}><Icon name="plus" />Вручную</button>
       </div>
-      {mode === "scan" ? (
+      {mode === "manual" ? <ManualMedication day={day} onSave={onManualSave} /> : mode === "scan" ? (
         <BarcodeScanner
           onCode={codeFound}
           onManual={() => switchMode("code")}
@@ -275,7 +279,7 @@ export function AddMedication({
             ) : query && !products.length ? (
               <p>
                 Не найдено. Проверьте название или попробуйте другой способ
-                поиска.
+                поиска или внесите лекарство вручную.
               </p>
             ) : !query ? (
               <p className="catalog-meta">

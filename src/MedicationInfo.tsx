@@ -8,7 +8,7 @@ import { Button, Icon } from "./components";
 import { findMedicationInstruction } from "./medication-instructions";
 import { MedicationInstruction } from "./MedicationInstruction";
 
-export function MedicationInfo({ stock, day }: { stock: Stock; day: string }) {
+export function MedicationInfo({ stock, day, aggregate = false }: { stock: Stock; day: string; aggregate?: boolean }) {
   const [product, setProduct] = useState<CatalogProduct | null>(null);
   const [grls, setGrls] = useState<GrlsLookup | null>(null);
   const [loading, setLoading] = useState(false);
@@ -89,15 +89,15 @@ export function MedicationInfo({ stock, day }: { stock: Stock; day: string }) {
       </div>
       <div className="medication-info-stock">
         <div>
-          <small>Дома · эта партия</small>
+          <small>{aggregate ? "Дома · все партии" : "Дома · эта партия"}</small>
           <strong>
             {stock.qty} {stock.unit}
           </strong>
         </div>
         <div>
-          <small>Срок годности</small>
-          <strong>{stock.expiry ? fmt(stock.expiry) : "Не указан"}</strong>
-          {stock.expiry && stock.expiry < day && (
+          <small>{aggregate ? "Сроки годности" : "Срок годности"}</small>
+          <strong>{aggregate ? "См. партии в аптечке" : stock.expiry ? fmt(stock.expiry) : "Не указан"}</strong>
+          {!aggregate && stock.expiry && stock.expiry < day && (
             <span className="catalog-error">Срок истёк</span>
           )}
         </div>

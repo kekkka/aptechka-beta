@@ -1,7 +1,10 @@
 import { MedicationInfo } from "./MedicationInfo";
 import { VirtualPharmacy } from "./VirtualPharmacy";
 import { AddMedication } from "./AddMedication";
-import { addCatalogStock } from "./inventory";
+import { StockSummary } from "./StockSummary";
+import { ShareShoppingList } from "./ShareShoppingList";
+import { PharmacyPurchase } from "./PharmacyPurchase";
+import { addManualStock, correctStock, addCatalogStock } from "./inventory";
 import { BrandLogo } from "./BrandLogo";
 import {
   useCallback,
@@ -57,6 +60,7 @@ type Dialog =
   | { type: "caregiver"; id: string }
   | { type: "helper"; id: string }
   | { type: "delete-helper"; id: string }
+  | { type: "purchase"; mode: "buy" | "nearby" }
   | {
       type:
         | "import"
@@ -66,7 +70,8 @@ type Dialog =
         | "settings"
         | "clock"
         | "about"
-        | "invite";
+        | "invite"
+        | "share-stock";
     }
   | { type: "end"; id: string };
 const tabs: { id: View; icon: string; label: string }[] = [
@@ -361,6 +366,7 @@ export default function App() {
     );
   } else if (view === "home" && account === "elena")
     content = (
+      <>
       <CaregiverHome
         state={state}
         events={ev}
@@ -371,6 +377,8 @@ export default function App() {
           })
         }
       />
+      <StockSummary state={state} onOpen={() => navigate("stock")} />
+      </>
     );
   else if (view === "home")
     content = (
@@ -481,6 +489,7 @@ export default function App() {
             ))}
           </div>
         )}
+        <StockSummary state={state} onOpen={() => navigate("stock")} />
         <div className="section-title">
           <h2>Сегодня по плану</h2>
           <button className="text-link" onClick={() => navigate("plan")}>
@@ -621,6 +630,8 @@ export default function App() {
         onAdd={(query) => setDialog({ type: "catalog", query })}
         onEdit={(stock) => setDialog({ type: "stock", stock })}
         onInfo={(stock) => setDialog({ type: "medication-info", stock })}
+        onShare={() => setDialog({ type: "share-stock" })}
+        onNearby={() => setDialog({ type: "purchase", mode: "nearby" })}
       />
     );
   else if (view === "chat")
@@ -778,31 +789,13 @@ export default function App() {
         pack: Number(d.get("pack")),
         expiry: String(d.get("expiry")),
       };
-    if (
-      !me.stock ||
-      !s.name ||
-      (!old && !s.strength) ||
-      !Number.isFinite(s.qty) ||
-      s.qty < 0 ||
-      s.qty > 100000 ||
-      (s.qty * 4) % 1 ||
-      !Number.isInteger(s.pack) ||
-      s.pack < 0 ||
-      s.pack > 100000
-    ) {
-      setToast("Проверьте значения остатка и упаковки.");
+    if (!old) return;
+    const next = structuredClone(state);
+    if (!correctStock(next, old.id, s)) {
+      setToast("Проверьте остаток, упаковку и срок годности.");
       return;
     }
-    change((next) => {
-      if (old) next.stock = next.stock.map((st) => (st.id === old.id ? s : st));
-      else next.stock.push(s);
-      record(
-        next,
-        "stock",
-        me.name + " обновила аптечку",
-        s.name + " · " + s.qty + " " + s.unit,
-      );
-    });
+    setState(next);
     close();
     setToast("Остаток сохранён.");
   };
@@ -1054,9 +1047,16 @@ export default function App() {
         <Button type="submit">Сохранить</Button>
       </form>
     );
+  else if (dialog?.type === "share-stock") {
+    modal = <ShareShoppingList state={state} />;
+  }
+  else if (dialog?.type === "purchase") {
+    modal = <PharmacyPurchase state={state} mode={dialog.mode} />;
+  }
   else if (dialog?.type === "medication-info") {
     modal = (
       <MedicationInfo
+        aggregate={dialog.stock.id.startsWith("shopping:")}
         stock={
           state.stock.find((s) => s.id === dialog.stock.id) || dialog.stock
         }
@@ -1068,6 +1068,11 @@ export default function App() {
       <AddMedication
         day={state.day}
         initialQuery={dialog.query}
+        onManualSave={(input) => {
+          const next = structuredClone(state);
+          if (!addManualStock(next, input)) return false;
+          setState(next); close(); setToast("Лекарство добавлено вручную."); return true;
+        }}
         onSave={(product, qty, expiry) => {
           const next = structuredClone(state);
           if (!addCatalogStock(next, product, qty, expiry)) return false;
@@ -1433,6 +1438,8 @@ export default function App() {
     "medication-info":
       dialog?.type === "medication-info" ? dialog.stock.name : "О препарате",
     catalog: "Добавить лекарство",
+    "share-stock": "Поделиться списком покупок",
+    purchase: dialog?.type === "purchase" && dialog.mode === "nearby" ? "Найти аптеку рядом" : "Купить лекарства",
     import: "Распознать назначение",
     patient: "Профиль пациента",
     contact: "Связаться с близкими",

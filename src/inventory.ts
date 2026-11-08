@@ -96,3 +96,26 @@ export function addCatalogStock(
   );
   return true;
 }
+
+export type StockInput = Pick<Stock, "name" | "strength" | "form" | "unit" | "qty" | "pack" | "expiry">;
+export function validStockInput(input: StockInput, allowZero = false): boolean {
+  return !!input.name.trim() && (allowZero || !!input.strength.trim()) && !!input.form.trim() && !!input.unit.trim()
+    && Number.isFinite(input.qty) && input.qty >= (allowZero ? 0 : 0.25) && input.qty <= 100000 && Number.isInteger(input.qty * 4)
+    && Number.isInteger(input.pack) && input.pack >= 0 && input.pack <= 100000
+    && !!input.expiry && /^\d{4}-\d{2}-\d{2}$/.test(input.expiry)
+    && !Number.isNaN(Date.parse(input.expiry)) && new Date(input.expiry).toISOString().slice(0, 10) === input.expiry;
+}
+export function addManualStock(s: State, input: StockInput): boolean {
+  if (!actor(s).stock || !validStockInput(input) || input.expiry! < s.day) return false;
+  s.stock.push({ ...input, name: input.name.trim(), strength: input.strength.trim(), id: uid() });
+  record(s, "stock", actor(s).name + " добавила лекарство вручную", `${input.name} · ${input.strength} · +${input.qty} ${input.unit}`);
+  return true;
+}
+export function correctStock(s: State, id: string, input: StockInput): boolean {
+  const stock = s.stock.find((item) => item.id === id);
+  if (!actor(s).stock || !stock || !validStockInput(input, true)) return false;
+  // Catalog identity stays immutable: editing quantity/expiry must not relabel a GTIN.
+  Object.assign(stock, { qty: input.qty, pack: input.pack, expiry: input.expiry });
+  record(s, "stock", actor(s).name + " скорректировала остаток", `${stock.name} · ${stock.strength} · остаток ${stock.qty} ${stock.unit}`);
+  return true;
+}
