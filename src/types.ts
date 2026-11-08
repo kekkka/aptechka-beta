@@ -2,6 +2,7 @@ export type AccountId = "senior" | "elena" | "anna";
 export type View =
   | "home"
   | "plan"
+  | "edit-event"
   | "stock"
   | "chat"
   | "courses"
@@ -21,6 +22,9 @@ export interface Member {
   alerts: boolean;
 }
 export interface Medication {
+  mealTiming?: MealTiming;
+  scheduleRevisions?: ScheduleRevision[];
+  deletedOn?: string;
   catalogId?: string;
   gtin?: string;
   id: string;
@@ -34,6 +38,7 @@ export interface Medication {
   pack: number;
   color?: string;
   days?: number;
+  endedOn?: string;
 }
 export interface Course {
   id: string;
@@ -66,6 +71,49 @@ export interface CareTask {
   icon: string;
   note?: string;
 }
+export interface PlanEvent {
+  scheduleRevisions?: ScheduleRevision[];
+  deletedOn?: string;
+  id: string;
+  kind: "procedure" | "appointment";
+  title: string;
+  date: string;
+  time: string;
+  note: string;
+  method: "manual" | "scan" | "sber";
+  demo?: boolean;
+  sourceText?: string;
+  doctor?: string;
+  clinic?: string;
+  appointmentId?: string;
+  completedBy?: string;
+  recurrence?: {
+    days: number;
+    intervalDays: number;
+    until?: string;
+  };
+  completions?: Record<string, string>;
+}
+export type MealTiming = "none" | "before" | "after" | "with";
+export interface ScheduleSettings {
+  stockId?: string;
+  medication?: Pick<
+    Medication,
+    "name" | "strength" | "form" | "unit" | "pack" | "catalogId" | "gtin"
+  >;
+  note?: string;
+  weekdays: number[];
+  times: string[];
+  dose: number;
+  mealTiming: MealTiming;
+  endDate: string;
+}
+export interface ScheduleRevision extends ScheduleSettings {
+  effectiveFrom: string;
+}
+export type RegularEventTarget =
+  | { kind: "medication"; courseId: string; medicationId: string }
+  | { kind: "procedure"; id: string };
 export interface ChatAttachment {
   kind: "dose" | "care";
   title: string;
@@ -80,6 +128,7 @@ export interface ChatMessage {
   attachment?: ChatAttachment;
 }
 export interface DoseLog {
+  takenAt?: string;
   allocations?: { stockId: string; qty: number }[];
   status: "taken" | "skipped" | "missed" | "snoozed";
   actor?: string;
@@ -108,6 +157,7 @@ export interface Audit {
   time: string;
 }
 export interface State {
+  planEvents?: PlanEvent[];
   notificationReads?: Record<string, Record<string, string>>;
   version: number;
   day: string;

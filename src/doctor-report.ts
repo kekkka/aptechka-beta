@@ -4,9 +4,12 @@ import {
   diffDays,
   DOSE_WINDOW_MINUTES,
   medKey,
+  medicationSchedule,
+  medicationForDate,
   mins,
 } from "./model";
 import type { DoseLog, Medication, State } from "./types";
+import { weekdayMatches } from "./schedule";
 export type ReportStatus =
   "taken" | "missed" | "skipped" | "waiting" | "planned" | "unknown";
 export interface ReportRow {
@@ -34,10 +37,12 @@ export function doctorRows(state: State, days: number): ReportRow[] {
     for (let day = 0; day < days; day++) {
       const date = addDays(start, day),
         offset = diffDays(course.start, date);
-      if (offset < 0 || offset >= course.days) continue;
+      if (offset < 0) continue;
       for (const med of course.meds) {
-        if (offset >= (med.days || course.days)) continue;
-        for (const time of med.times) {
+        const settings = medicationSchedule(course, med, date);
+        if (date > settings.endDate || !weekdayMatches(settings, date))
+          continue;
+        for (const time of settings.times) {
           const id = [course.id, med.id, date, time].join("|"),
             log = state.logs[id];
           if (!course.active && !log) continue;
@@ -55,7 +60,20 @@ export function doctorRows(state: State, days: number): ReportRow[] {
                 : state.clock < mins(time) + DOSE_WINDOW_MINUTES
                   ? "waiting"
                   : "missed";
-          rows.push({ id, date, time, course: course.title, med, log, status });
+          rows.push({
+            id,
+            date,
+            time,
+            course: course.title,
+            med: {
+              ...medicationForDate(course, med, date),
+              dose: settings.dose,
+              times: settings.times,
+              mealTiming: settings.mealTiming,
+            },
+            log,
+            status,
+          });
         }
       }
     }

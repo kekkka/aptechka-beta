@@ -40,13 +40,41 @@ import {
   uid,
   undoDose,
 } from "./model";
-import type { AccountId, DoseEvent, State, Stock, View } from "./types";
+import type {
+  AccountId,
+  DoseEvent,
+  PlanEvent,
+  RegularEventTarget,
+  State,
+  Stock,
+  View,
+} from "./types";
 import { Button, Empty, Field, Heading, Icon, Modal } from "./components";
 import { Login } from "./Login";
 import { DoctorReport } from "./DoctorReport";
 import { PatientDrum } from "./PatientDrum";
 import { DemoClock } from "./DemoClock";
 import { ImportPrescription } from "./ImportPrescription";
+import { AddPlanEvent } from "./AddPlanEvent";
+import { RegularPlan } from "./RegularPlan";
+import { RegularEventEditor } from "./RegularEventEditor";
+import {
+  deleteRegularEvent,
+  regularEventHash,
+  regularEventTarget,
+  saveRegularEvent,
+} from "./regular-event-editor";
+import { MEAL_LABELS } from "./schedule";
+import { calendarTimelineGroup } from "./calendar-timeline";
+import { SberAppointmentCard, SberAppointmentStub } from "./SberAppointment";
+import { ProcedureEventCard, ProcedureEventDetails } from "./ProcedureEvent";
+import { sberHealthAppointments } from "./sber-health";
+import {
+  addManualMedication,
+  addPlanEvent,
+  completePlanEvent,
+  planEventsForDate,
+} from "./plan-events";
 import { CaregiverHome } from "./CaregiverHome";
 import { Chat } from "./Chat";
 import { UserProfile } from "./UserProfile";
@@ -54,6 +82,8 @@ import { NotificationCenter } from "./NotificationCenter";
 import { markNotificationsRead } from "./notifications";
 type Dialog =
   | { type: "event"; event: DoseEvent }
+  | { type: "procedure-event"; event: PlanEvent }
+  | { type: "sber-appointment"; event: PlanEvent }
   | { type: "stock"; stock?: Stock }
   | { type: "medication-info"; stock: Stock }
   | { type: "catalog"; query?: string }
@@ -64,6 +94,7 @@ type Dialog =
   | {
       type:
         | "import"
+        | "add-plan-event"
         | "patient"
         | "manager"
         | "contact"
@@ -83,6 +114,7 @@ const tabs: { id: View; icon: string; label: string }[] = [
 const allViews: View[] = [
   "home",
   "plan",
+  "edit-event",
   "stock",
   "chat",
   "courses",
@@ -92,6 +124,7 @@ const allViews: View[] = [
   "profile",
 ];
 function getView(): View {
+  if (location.hash.startsWith("#edit-event/")) return "edit-event";
   const v = location.hash.slice(1) as View;
   return allViews.includes(v) ? v : "home";
 }
@@ -101,9 +134,14 @@ export default function App() {
     [view, setView] = useState<View>(getView),
     [dialog, setDialog] = useState<Dialog | null>(null),
     [toast, setToast] = useState(""),
-    [selectedDate, setSelectedDate] = useState(state.day),
-    [filter, setFilter] = useState("all");
+    [selectedDate, setSelectedDate] = useState(state.day);
   const [profileReturn, setProfileReturn] = useState<View>("home");
+  const [planSection, setPlanSection] = useState<"calendar" | "regular">(
+    "calendar",
+  );
+  const [editingTarget, setEditingTarget] = useState<RegularEventTarget | null>(
+    () => regularEventTarget(location.hash),
+  );
   const [completedDose, setCompletedDose] = useState<DoseEvent | null>(null);
   useEffect(() => {
     if (!completedDose) return;
@@ -132,6 +170,8 @@ export default function App() {
     const onHash = () => {
       setDialog(null);
       setView(getView());
+      if (getView() === "edit-event")
+        setEditingTarget(regularEventTarget(location.hash));
       if (location.hash === "#login") {
         setAccount(null);
         setDialog(null);
@@ -158,7 +198,8 @@ export default function App() {
   const navigate = (v: View) => {
     close();
     setView(v);
-    location.hash = v;
+    location.hash =
+      v === "edit-event" && editingTarget ? regularEventHash(editingTarget) : v;
     window.scrollTo(0, 0);
   };
   const login = (id: AccountId) => {
@@ -178,6 +219,9 @@ export default function App() {
   };
   const active = accounts.find((a) => a.id === account),
     owner = isOwner(state),
+    caregiver = state.members.some(
+      (member) => member.id === state.role && member.role === "caregiver",
+    ),
     me = actor(state),
     ev = events(state),
     sg = signals(state),
@@ -224,7 +268,18 @@ export default function App() {
           </span>
           <span className="dose-meta">
             {e.med.strength} · {e.med.dose} {e.med.unit} · {e.med.note}
+            {e.med.mealTiming && e.med.mealTiming !== "none"
+              ? ` · ${MEAL_LABELS[e.med.mealTiming]}`
+              : ""}
           </span>
+          {taken && (e.log?.takenAt || e.log?.time) && (
+            <span className="dose-source">
+              Фактически принято:{" "}
+              {e.log.takenAt
+                ? `${fmt(e.log.takenAt.slice(0, 10))} в ${e.log.takenAt.slice(11, 16)}`
+                : e.log.time}
+            </span>
+          )}
           {e.log?.actorName && (
             <span className="dose-source">
               {e.log.actorName} ·{" "}
@@ -310,6 +365,44 @@ export default function App() {
         onInvite={() => setDialog({ type: "invite" })}
         onLogout={logout}
       />
+    );
+  } else if (view === "edit-event" && !caregiver) {
+    const backToRegular = () => {
+      setPlanSection("regular");
+      navigate("plan");
+    };
+    content = editingTarget ? (
+      <RegularEventEditor
+        key={regularEventHash(editingTarget)}
+        state={state}
+        target={editingTarget}
+        onBack={backToRegular}
+        onSave={(settings) => {
+          const next = structuredClone(state);
+          if (!saveRegularEvent(next, editingTarget, settings)) return false;
+          setState(next);
+          backToRegular();
+          setToast(
+            "Расписание сохранено. Изменения вступят в силу с завтрашнего дня или даты начала события.",
+          );
+          return true;
+        }}
+        onDelete={() => {
+          const next = structuredClone(state);
+          if (!deleteRegularEvent(next, editingTarget)) return false;
+          setState(next);
+          backToRegular();
+          setToast("Событие удалено. История и отметки сохранены.");
+          return true;
+        }}
+      />
+    ) : (
+      <>
+        <Empty title="Событие не найдено" />
+        <Button kind="white" onClick={backToRegular}>
+          К регулярным событиям
+        </Button>
+      </>
     );
   } else if (view === "doctor") {
     content = <DoctorReport state={state} onBack={() => navigate("home")} />;
@@ -530,96 +623,206 @@ export default function App() {
         </button>
       </>
     );
-  else if (view === "plan") {
+  else if (view === "plan" || (view === "edit-event" && caregiver)) {
     const start = addDays(
         selectedDate,
         -((dateObj(selectedDate).getDay() + 6) % 7),
       ),
-      list = events(state, selectedDate).filter(
-        (e) =>
-          filter === "all" ||
-          !["taken", "skipped", "missed"].includes(e.log?.status || ""),
-      );
+      list = events(state, selectedDate),
+      scheduled = [
+        ...planEventsForDate(state, selectedDate),
+        ...sberHealthAppointments(state, selectedDate),
+      ];
     content = (
       <>
         <Heading
           title="План лечения"
-          subtitle={`${state.patient.name} · ${fmt(selectedDate)}`}
           action={
             owner ? (
               <button
                 className="icon-btn"
-                aria-label="Добавить назначение"
-                onClick={() => setDialog({ type: "import" })}
+                aria-label="Добавить событие"
+                onClick={() => setDialog({ type: "add-plan-event" })}
               >
                 <Icon name="plus" />
               </button>
             ) : undefined
           }
         />
-        <div className="day-wrap">
-          <button
-            className="day-nav"
-            aria-label="Предыдущая неделя"
-            onClick={() => setSelectedDate(addDays(selectedDate, -7))}
+        {!caregiver && (
+          <div
+            className="segmented plan-sections"
+            role="tablist"
+            aria-label="Раздел плана лечения"
+            onKeyDown={(event) => {
+              if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key))
+                return;
+              event.preventDefault();
+              const section =
+                event.key === "Home"
+                  ? "calendar"
+                  : event.key === "End"
+                    ? "regular"
+                    : planSection === "calendar"
+                      ? "regular"
+                      : "calendar";
+              setPlanSection(section);
+              document.getElementById(`plan-tab-${section}`)?.focus();
+            }}
           >
-            ‹
-          </button>
-          {Array.from({ length: 7 }, (_, i) => {
-            const date = addDays(start, i);
-            return (
+            {(
+              [
+                ["calendar", "Календарь"],
+                ["regular", "Регулярные события"],
+              ] as const
+            ).map(([section, label]) => (
               <button
-                key={date}
-                className={`day ${date === selectedDate ? "active" : ""}`}
-                onClick={() => setSelectedDate(date)}
+                key={section}
+                id={`plan-tab-${section}`}
+                type="button"
+                role="tab"
+                tabIndex={planSection === section ? 0 : -1}
+                aria-selected={planSection === section}
+                aria-controls={`plan-panel-${section}`}
+                className={planSection === section ? "active" : ""}
+                onClick={() => setPlanSection(section)}
               >
-                <span>
-                  {dateObj(date).toLocaleDateString("ru", { weekday: "short" })}
-                </span>
-                <b>{dateObj(date).getDate()}</b>
+                {label}
               </button>
-            );
-          })}
-          <button
-            className="day-nav"
-            aria-label="Следующая неделя"
-            onClick={() => setSelectedDate(addDays(selectedDate, 7))}
+            ))}
+          </div>
+        )}
+        {!caregiver && planSection === "regular" ? (
+          <div
+            id="plan-panel-regular"
+            role="tabpanel"
+            aria-labelledby="plan-tab-regular"
           >
-            ›
-          </button>
-        </div>
-        <div className="segmented">
-          {[
-            ["all", "Все приёмы"],
-            ["pending", "Без отметки"],
-          ].map(([v, l]) => (
-            <button
-              key={v}
-              className={filter === v ? "active" : ""}
-              onClick={() => setFilter(v)}
-            >
-              {l}
-            </button>
-          ))}
-        </div>
-        <div className="card space">
-          {list.length ? (
-            list.map(dose)
-          ) : (
-            <Empty title="Приёмов нет">
-              На выбранную дату нет приёмов по этому фильтру
-            </Empty>
-          )}
-        </div>
-        <div className="stack space">
-          <Button kind="white" onClick={() => navigate("courses")}>
-            <Icon name="clipboard" />
-            Назначения врача
-          </Button>
-          <Button kind="white" onClick={() => navigate("history")}>
-            Журнал действий
-          </Button>
-        </div>
+            <RegularPlan
+              state={state}
+              onEdit={(target) => {
+                if (!owner) return;
+                setEditingTarget(target);
+                close();
+                setView("edit-event");
+                location.hash = regularEventHash(target);
+                window.scrollTo(0, 0);
+              }}
+            />
+          </div>
+        ) : (
+          <div
+            id="plan-panel-calendar"
+            role={caregiver ? undefined : "tabpanel"}
+            aria-labelledby={caregiver ? undefined : "plan-tab-calendar"}
+          >
+            <div className="day-wrap">
+              <button
+                className="day-nav"
+                aria-label="Предыдущая неделя"
+                onClick={() => setSelectedDate(addDays(selectedDate, -7))}
+              >
+                ‹
+              </button>
+              {Array.from({ length: 7 }, (_, i) => {
+                const date = addDays(start, i);
+                return (
+                  <button
+                    key={date}
+                    className={`day ${date === selectedDate ? "active" : ""}`}
+                    onClick={() => setSelectedDate(date)}
+                  >
+                    <span>
+                      {dateObj(date).toLocaleDateString("ru", {
+                        weekday: "short",
+                      })}
+                    </span>
+                    <b>{dateObj(date).getDate()}</b>
+                  </button>
+                );
+              })}
+              <button
+                className="day-nav"
+                aria-label="Следующая неделя"
+                onClick={() => setSelectedDate(addDays(selectedDate, 7))}
+              >
+                ›
+              </button>
+            </div>
+            <div className="space">
+              {list.length || scheduled.length ? (
+                [
+                  ...list.map((event) => ({
+                    id: event.id,
+                    time: event.time,
+                    group: calendarTimelineGroup(state, event),
+                    content: dose(event),
+                  })),
+                  ...scheduled.map((event) => ({
+                    id: event.id,
+                    time: event.time,
+                    group: calendarTimelineGroup(state, event),
+                    content:
+                      event.kind === "appointment" ? (
+                        <SberAppointmentCard
+                          key={event.id}
+                          event={event}
+                          onOpen={() =>
+                            setDialog({ type: "sber-appointment", event })
+                          }
+                        />
+                      ) : (
+                        <ProcedureEventCard
+                          key={event.id}
+                          event={event}
+                          onOpen={() =>
+                            setDialog({ type: "procedure-event", event })
+                          }
+                        />
+                      ),
+                  })),
+                ]
+                  .sort(
+                    (first, second) =>
+                      first.group - second.group ||
+                      first.time.localeCompare(second.time) ||
+                      first.id.localeCompare(second.id),
+                  )
+                  .reduce<ReactNode[][]>(
+                    (groups, entry) => {
+                      groups[entry.group].push(entry.content);
+                      return groups;
+                    },
+                    [[], [], []],
+                  )
+                  .map((entries, group) => entries.length ? (
+                    <section
+                      key={group}
+                      aria-labelledby={`calendar-group-${group}`}
+                    >
+                      <div className="section-title">
+                        <h2 id={`calendar-group-${group}`}>
+                          {
+                            ["Предстоит выполнить", "Выполнено", "Просрочено"][
+                              group
+                            ]
+                          }
+                        </h2>
+                        <span className="label gray">{entries.length}</span>
+                      </div>
+                      <div className="card">{entries}</div>
+                    </section>
+                  ) : null)
+              ) : (
+                <div className="card">
+                  <Empty title="Событий нет">
+                    На выбранную дату нет событий
+                  </Empty>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </>
     );
   } else if (view === "stock")
@@ -806,7 +1009,8 @@ export default function App() {
       resolved = ["taken", "skipped", "missed"].includes(log?.status || ""),
       past =
         e.date < state.day ||
-        (e.date === state.day && mins(e.time) <= state.clock);
+        (e.date === state.day && mins(e.time) <= state.clock),
+      canConfirmMissed = owner && past && log?.status === "missed";
     modal = (
       <>
         <div className="event-hero">
@@ -821,7 +1025,7 @@ export default function App() {
           </p>
           <p>{e.med.note}</p>
         </div>
-        {resolved ? (
+        {resolved && !canConfirmMissed ? (
           <>
             <div className="hint">
               {log.status === "taken"
@@ -832,6 +1036,14 @@ export default function App() {
               · {log.actorName}
               <br />
               {log.note}
+              {log.status === "taken" && (log.takenAt || log.time) && (
+                <p>
+                  Фактически принято:{" "}
+                  {log.takenAt
+                    ? `${fmt(log.takenAt.slice(0, 10))} в ${log.takenAt.slice(11, 16)}`
+                    : log.time}
+                </p>
+              )}
             </div>
             {log.status !== "missed" &&
               me.mark &&
@@ -849,7 +1061,7 @@ export default function App() {
                 </div>
               )}
             {["skipped", "missed"].includes(log.status) &&
-              account !== "senior" && (
+              account !== "senior" && !caregiver && (
                 <div className="space">
                   <Button
                     onClick={() => {
@@ -879,19 +1091,45 @@ export default function App() {
           <form
             onSubmit={(event) => {
               const d = formData(event);
-              change((s) => {
-                markDose(
-                  s,
-                  e.id,
-                  "taken",
-                  account === "senior" ? "self" : String(d.get("source")),
-                  String(d.get("note") || ""),
+              const next = structuredClone(state);
+              const marked = markDose(
+                next,
+                e.id,
+                "taken",
+                account === "senior" ? "self" : String(d.get("source")),
+                String(d.get("note") || ""),
+                owner ? String(d.get("takenAt") || "") : undefined,
+              );
+              if (!marked) {
+                setToast(
+                  "Не удалось отметить приём. Проверьте время и текущую отметку.",
                 );
-              });
+                return;
+              }
+              setState(next);
               close();
               setToast("Приём отмечен.");
             }}
           >
+            {canConfirmMissed && (
+              <p className="hint">
+                Приём просрочен и не был подтверждён. Укажите время уже
+                состоявшегося приёма — это не рекомендация принять лекарство сейчас.
+              </p>
+            )}
+            {owner && (
+              <label className="field">
+                <span>Фактические дата и время приёма</span>
+                <input
+                  name="takenAt"
+                  type="datetime-local"
+                  required
+                  min={`${e.date}T${e.time}`}
+                  max={`${state.day}T${hm(state.clock)}`}
+                  defaultValue={`${state.day}T${hm(state.clock)}`}
+                />
+              </label>
+            )}
             {account === "senior" ? (
               <p className="senior-confirm">
                 Вы уже приняли лекарство? Подтвердите только состоявшийся приём.
@@ -919,6 +1157,7 @@ export default function App() {
               </Button>
               <Button
                 kind="white"
+                disabled={canConfirmMissed}
                 onClick={() => {
                   const reason = prompt("Причина пропуска");
                   if (reason?.trim()) {
@@ -933,6 +1172,7 @@ export default function App() {
               </Button>
               <Button
                 kind="white"
+                disabled={canConfirmMissed}
                 onClick={() => {
                   change((s) => {
                     s.logs[e.id] = {
@@ -1083,10 +1323,55 @@ export default function App() {
         }}
       />
     );
-  } else if (dialog?.type === "import")
+  } else if (dialog?.type === "procedure-event")
+    modal = (
+      <ProcedureEventDetails
+        state={state}
+        event={dialog.event}
+        onComplete={() => {
+          const next = structuredClone(state);
+          if (!completePlanEvent(next, dialog.event.id)) return;
+          setState(next);
+          close();
+          setToast("Процедура отмечена как выполненная.");
+        }}
+      />
+    );
+  else if (dialog?.type === "sber-appointment")
+    modal = <SberAppointmentStub event={dialog.event} onClose={close} />;
+  else if (dialog?.type === "add-plan-event")
+    modal = (
+      <AddPlanEvent
+        date={planSection === "regular" ? state.day : selectedDate}
+        regular={planSection === "regular"}
+        onImport={() => setDialog({ type: "import" })}
+        onMedication={(course) => {
+          const next = structuredClone(state);
+          if (!addManualMedication(next, course)) return false;
+          setState(next);
+          close();
+          setToast("Приём лекарства добавлен в план.");
+          return true;
+        }}
+        onEvent={(event) => {
+          const next = structuredClone(state);
+          if (!addPlanEvent(next, event)) return false;
+          setState(next);
+          close();
+          setToast("Событие добавлено в план.");
+          return true;
+        }}
+      />
+    );
+  else if (dialog?.type === "import")
     modal = (
       <ImportPrescription
         state={state}
+        initialDate={
+          view === "plan" && planSection === "calendar"
+            ? selectedDate
+            : state.day
+        }
         onSave={(course, stock) => {
           change((s) => {
             s.courses.push(course);
@@ -1434,6 +1719,7 @@ export default function App() {
     );
   const dialogTitles: Record<Dialog["type"], string> = {
     event: "Приём лекарства",
+    "procedure-event": "Процедура",
     stock: "Домашний запас",
     "medication-info":
       dialog?.type === "medication-info" ? dialog.stock.name : "О препарате",
@@ -1441,6 +1727,8 @@ export default function App() {
     "share-stock": "Поделиться списком покупок",
     purchase: dialog?.type === "purchase" && dialog.mode === "nearby" ? "Найти аптеку рядом" : "Купить лекарства",
     import: "Распознать назначение",
+    "add-plan-event": "Добавить событие",
+    "sber-appointment": "Переход в СберЗдоровье",
     patient: "Профиль пациента",
     contact: "Связаться с близкими",
     caregiver: "Профиль сиделки",
@@ -1527,8 +1815,16 @@ export default function App() {
               <button
                 key={t.id}
                 aria-label={t.label}
-                aria-current={view === t.id ? "page" : undefined}
-                className={view === t.id ? "active" : ""}
+                aria-current={
+                  view === t.id || (t.id === "plan" && view === "edit-event")
+                    ? "page"
+                    : undefined
+                }
+                className={
+                  view === t.id || (t.id === "plan" && view === "edit-event")
+                    ? "active"
+                    : ""
+                }
                 onClick={() => navigate(t.id)}
               >
                 <Icon name={t.icon} />

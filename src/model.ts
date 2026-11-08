@@ -1,9 +1,12 @@
 import { DEMO_MEDICATIONS, upgradeDemoMedications } from "./demo-medications";
+import { demoProcedure, upgradeDemoProcedures } from "./demo-procedures";
+import { scheduleForDate, weekdayMatches, WEEKDAYS } from "./schedule";
 import type {
   State,
   AccountId,
   DoseEvent,
   Medication,
+  Course,
   CareTask,
   ChatAttachment,
 } from "./types";
@@ -88,6 +91,7 @@ const CARE_TASKS: CareTask[] = [
   },
 ];
 export const seed = (): State => ({
+  planEvents: [demoProcedure(DAY)],
   version: 1,
   day: DAY,
   clock: 825,
@@ -282,6 +286,8 @@ export function loadState(): State {
       if (!Array.isArray(s.careTasks)) s.careTasks = CARE_TASKS;
       if (!s.careDone || typeof s.careDone !== "object") s.careDone = {};
       if (!Array.isArray(s.chat)) s.chat = [];
+      if (!Array.isArray(s.planEvents)) s.planEvents = [];
+      upgradeDemoProcedures(s);
       return s;
     }
   } catch {}
@@ -317,21 +323,78 @@ export function removeHelper(state: State, id: string): boolean {
 }
 export const canViewCourse = (s: State, c: State["courses"][number]) =>
   isOwner(s) || s.role === "senior" || !c.importMethod || c.helper === s.role;
+export function medicationEnd(
+  course: State["courses"][number],
+  medication: Medication,
+) {
+  return medicationSchedule(course, medication, "9999-12-31").endDate;
+}
+export function medicationSchedule(
+  course: State["courses"][number],
+  medication: Medication,
+  date: string,
+) {
+  const end = addDays(
+    course.start,
+    Math.min(medication.days || course.days, course.days) - 1,
+  );
+  const endDate =
+    medication.endedOn && medication.endedOn < end ? medication.endedOn : end;
+  const settings = scheduleForDate(
+    {
+      weekdays: WEEKDAYS.map((day) => day.value),
+      times: medication.times,
+      dose: medication.dose,
+      mealTiming: medication.mealTiming || "none",
+      endDate,
+    },
+    medication.scheduleRevisions,
+    date,
+  );
+  const cutoff = [
+    medication.endedOn,
+    medication.deletedOn ? addDays(medication.deletedOn, -1) : undefined,
+  ]
+    .filter((value): value is string => !!value)
+    .sort()[0];
+  return cutoff && cutoff < settings.endDate
+    ? { ...settings, endDate: cutoff }
+    : settings;
+}
+export function medicationForDate(
+  course: Course,
+  medication: Medication,
+  date: string,
+): Medication {
+  const settings = medicationSchedule(course, medication, date);
+  return {
+    ...medication,
+    ...settings.medication,
+    times: settings.times,
+    dose: settings.dose,
+    mealTiming: settings.mealTiming,
+  };
+}
 export function events(s: State, date = s.day): DoseEvent[] {
   return s.courses
     .flatMap((c) =>
-      canViewCourse(s, c) &&
-      c.active &&
-      diffDays(c.start, date) >= 0 &&
-      diffDays(c.start, date) < c.days
-        ? c.meds
-            .filter((m) => diffDays(c.start, date) < (m.days || c.days))
-            .flatMap((m) =>
-              m.times.map((time) => {
-                const id = [c.id, m.id, date, time].join("|");
-                return { id, course: c, med: m, date, time, log: s.logs[id] };
-              }),
-            )
+      canViewCourse(s, c) && c.active && diffDays(c.start, date) >= 0
+        ? c.meds.flatMap((m) => {
+            const settings = medicationSchedule(c, m, date);
+            if (date > settings.endDate || !weekdayMatches(settings, date))
+              return [];
+            return settings.times.map((time) => {
+              const id = [c.id, m.id, date, time].join("|");
+              return {
+                id,
+                course: c,
+                med: medicationForDate(c, m, date),
+                date,
+                time,
+                log: s.logs[id],
+              };
+            });
+          })
         : [],
     )
     .sort((a, b) => a.time.localeCompare(b.time));
@@ -360,21 +423,28 @@ export function shopping(s: State) {
   for (const c of s.courses.filter(
     (c) => c.active && c.start <= s.day && canViewCourse(s, c),
   ))
-    for (let d = 0; d < c.days; d++) {
-      const date = addDays(c.start, d);
-      if (date < s.day) continue;
-      for (const m of c.meds) {
-        if (d >= (m.days || c.days)) continue;
-        for (const time of m.times) {
+    for (const m of c.meds) {
+      const end = medicationEnd(c, m);
+      for (
+        let d = Math.max(0, diffDays(c.start, s.day));
+        d <= diffDays(c.start, end);
+        d++
+      ) {
+        const date = addDays(c.start, d);
+        const settings = medicationSchedule(c, m, date);
+        if (date > settings.endDate || !weekdayMatches(settings, date))
+          continue;
+        for (const time of settings.times) {
           if (
             ["taken", "skipped", "missed"].includes(
               s.logs[[c.id, m.id, date, time].join("|")]?.status,
             )
           )
             continue;
-          const key = medKey(m),
-            n = needs.get(key) || { med: m, needed: 0, end: date };
-          n.needed += m.dose;
+          const medication = medicationForDate(c, m, date);
+          const key = medKey(medication),
+            n = needs.get(key) || { med: medication, needed: 0, end: date };
+          n.needed += settings.dose;
           n.end = date > n.end ? date : n.end;
           needs.set(key, n);
         }
@@ -465,17 +535,34 @@ export function markDose(
   status: "taken" | "skipped",
   source: string,
   note = "",
+  takenAt?: string,
 ): boolean {
   expireDoses(s);
-  const e = events(s).find((e) => e.id === id);
+  const e = events(s, id.split("|")[2]).find((e) => e.id === id);
+  const correction = takenAt !== undefined;
+  if (
+    correction &&
+    (!isOwner(s) ||
+      status !== "taken" ||
+      !e ||
+      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(takenAt) ||
+      iso(dateObj(takenAt.slice(0, 10))) !== takenAt.slice(0, 10) ||
+      Number(takenAt.slice(11, 13)) > 23 ||
+      Number(takenAt.slice(14, 16)) > 59 ||
+      takenAt < `${e.date}T${e.time}` ||
+      takenAt > `${s.day}T${hm(s.clock)}`)
+  )
+    return false;
   if (
     !e ||
     !actor(s).mark ||
+    (!correction && e.date !== s.day) ||
     e.date > s.day ||
     (e.date === s.day &&
       (mins(e.time) > s.clock ||
-        s.clock >= mins(e.time) + DOSE_WINDOW_MINUTES)) ||
-    ["taken", "skipped", "missed"].includes(e.log?.status || "")
+        (!correction && s.clock >= mins(e.time) + DOSE_WINDOW_MINUTES))) ||
+    ["taken", "skipped"].includes(e.log?.status || "") ||
+    (!correction && e.log?.status === "missed")
   )
     return false;
   const allocations: { stockId: string; qty: number }[] = [];
@@ -502,6 +589,7 @@ export function markDose(
     actorName: actor(s).name,
     source,
     time: hm(s.clock),
+    takenAt: status === "taken" ? takenAt || `${s.day}T${hm(s.clock)}` : undefined,
     consumed,
     stockId: allocations[0]?.stockId,
     allocations,
@@ -513,7 +601,10 @@ export function markDose(
     status,
     actor(s).name +
       (status === "taken" ? " отметила приём" : " отметила пропуск"),
-    e.med.name + " · " + note,
+    e.med.name +
+      " · " +
+      note +
+      (correction ? ` · фактический приём ${takenAt}` : ""),
     id,
   );
   return true;

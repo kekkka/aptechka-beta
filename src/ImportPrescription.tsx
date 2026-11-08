@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Button, Icon } from "./components";
 import { parse } from "./parser";
-import { addDays, iso, medKey, uid } from "./model";
+import { addDays, iso, medKey, medicationEnd, uid } from "./model";
 import type { Course, ParsedMed, State, Stock } from "./types";
 import { read as readPrescription, type Page, type Progress } from "./reader";
 const blank = (): ParsedMed => ({
@@ -20,9 +20,11 @@ const blank = (): ParsedMed => ({
 });
 export function ImportPrescription({
   state,
+  initialDate = state.day,
   onSave,
 }: {
   state: State;
+  initialDate?: string;
   onSave: (course: Course, stock: Stock[]) => void;
 }) {
   const [step, setStep] = useState(0),
@@ -33,7 +35,7 @@ export function ImportPrescription({
     [error, setError] = useState(""),
     [progress, setProgress] = useState<Progress | null>(null),
     [title, setTitle] = useState("Новое назначение"),
-    [start, setStart] = useState(state.day),
+    [start, setStart] = useState(initialDate),
     [helper, setHelper] = useState("elena"),
     [consent, setConsent] = useState(false),
     [reviewStock, setReviewStock] = useState<Stock[]>(
@@ -159,8 +161,12 @@ export function ImportPrescription({
           addDays(c.start, c.days - 1) >= start &&
           c.meds.some(
             (old) =>
+              medicationEnd(c, old) >= start &&
               medKey(old) ===
-              medKey({ ...m, unit: m.form === "Капсулы" ? "капс." : "табл." }),
+                medKey({
+                  ...m,
+                  unit: m.form === "Капсулы" ? "капс." : "табл.",
+                }),
           ),
       ),
     );

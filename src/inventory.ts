@@ -2,9 +2,10 @@ import type { State, Stock, Medication } from "./types";
 import type { CatalogProduct } from "./catalog";
 import {
   actor,
-  addDays,
   canViewCourse,
   medKey,
+  medicationEnd,
+  medicationForDate,
   record,
   shopping,
   uid,
@@ -27,9 +28,9 @@ export function inventoryItems(s: State) {
   for (const course of s.courses.filter(
     (c) => c.active && c.start <= s.day && canViewCourse(s, c),
   )) {
-    for (const med of course.meds) {
-      if (addDays(course.start, (med.days || course.days) - 1) < s.day)
-        continue;
+    for (const entry of course.meds) {
+      const med = medicationForDate(course, entry, s.day);
+      if (medicationEnd(course, med) < s.day) continue;
       const key = medKey(med);
       if (!items.has(key)) items.set(key, { key, med, batches: [] });
     }
