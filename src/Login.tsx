@@ -23,10 +23,6 @@ export function Login({ onSelect }: { onSelect: (id: AccountId) => void }) {
       </div>
       <div className="login-intro">
         <p className="eyebrow">РЯДОМ, ДАЖЕ НА РАССТОЯНИИ</p>
-        <h1>
-          Забота начинается
-          <br />с простого входа
-        </h1>
         <p>Выберите, под каким аккаунтом войти</p>
       </div>
       <div className="account-list" aria-label="Выбор аккаунта">
