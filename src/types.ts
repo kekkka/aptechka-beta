@@ -107,6 +107,7 @@ export interface Audit {
   time: string;
 }
 export interface State {
+  notificationReads?: Record<string, Record<string, string>>;
   version: number;
   day: string;
   clock: number;

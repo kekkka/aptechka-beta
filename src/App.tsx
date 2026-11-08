@@ -46,6 +46,8 @@ import { ImportPrescription } from "./ImportPrescription";
 import { CaregiverHome } from "./CaregiverHome";
 import { Chat } from "./Chat";
 import { UserProfile } from "./UserProfile";
+import { NotificationCenter } from "./NotificationCenter";
+import { markNotificationsRead } from "./notifications";
 type Dialog =
   | { type: "event"; event: DoseEvent }
   | { type: "stock"; stock?: Stock }
@@ -1338,6 +1340,7 @@ export default function App() {
             <a className="brand" href="#home" onClick={() => navigate("home")}>
               <BrandLogo />
             </a>
+            <div className="header-account-actions">
             <button
               className="profile-btn"
               onClick={() => {
@@ -1356,6 +1359,9 @@ export default function App() {
               </span>
               <Icon name="chevron" />
             </button>
+            <NotificationCenter state={state} onNavigate={navigate}
+              onRead={(ids) => change((s) => markNotificationsRead(s, ids))} />
+            </div>
           </div>
           <div className="header-note">
             <span>
