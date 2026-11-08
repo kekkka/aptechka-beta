@@ -1,3 +1,5 @@
+import { PatientCondition, PatientMonitoring } from "./PatientMonitoring";
+import { saveCallSchedule } from "./monitoring";
 import { MedicationInfo } from "./MedicationInfo";
 import { VirtualPharmacy } from "./VirtualPharmacy";
 import { AddMedication } from "./AddMedication";
@@ -404,6 +406,8 @@ export default function App() {
         </Button>
       </>
     );
+  } else if (view === "devices") {
+    content = owner ? <PatientMonitoring state={state} onBack={() => navigate("home")} onSave={schedule => { const next = structuredClone(state); if (!saveCallSchedule(next, schedule)) return false; setState(next); return true; }} /> : <Empty title="Мониторинг доступен менеджеру лечения">Вернитесь на главный экран.</Empty>;
   } else if (view === "doctor") {
     content = <DoctorReport state={state} onBack={() => navigate("home")} />;
   } else if (account === "senior") {
@@ -516,6 +520,7 @@ export default function App() {
             />
           </div>
         </section>
+        <PatientCondition state={state} onOpen={() => { navigate("devices"); }} />
         {sg.length ? (
           alert(sg[0])
         ) : (
@@ -616,8 +621,8 @@ export default function App() {
             <Icon name="watch" />
           </span>
           <span>
-            <strong>Забота с помощью устройств</strong>
-            <p>Следующий этап продукта</p>
+            <strong>Мониторинг состояния</strong>
+            <p>Самочувствие, звонки и устройства</p>
           </span>
           <Icon name="arrow" />
         </button>

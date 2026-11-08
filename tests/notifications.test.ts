@@ -20,14 +20,13 @@ test("Patient has neither notifications nor demo cards, even with missed doses a
   assert.deepEqual(careNotifications(s), []);
 });
 
-test("Both care roles get the call and monitoring placeholders explicitly marked as demo", () => {
-  for (const role of ["anna", "elena"]) {
-    const s = setup();
-    s.role = role;
-    const demos = careNotifications(s).filter((item) => item.demo);
-    assert.deepEqual(demos.map((item) => item.kind), ["patient", "health"]);
-    assert.ok(demos.every((item) => !item.time && !item.action));
-  }
+test("Only the manager gets call examples and monitoring previews", () => {
+  const s = setup(); s.role = "anna";
+  const demos = careNotifications(s).filter(item => item.demo);
+  assert.deepEqual(demos.map(item => item.kind), ["patient", "patient", "health"]);
+  assert.ok(demos.slice(0, 2).every(item => item.action === "devices" && item.callId));
+  s.role = "elena";
+  assert.ok(!careNotifications(s).some(item => item.kind === "patient" || item.kind === "health"));
 });
 
 test("Caregiver's reported skip keeps its author and reason and vanishes after resolution", () => {
@@ -124,7 +123,7 @@ test("Demo reads never affect the badge; patient and unknown IDs cannot create r
   const before = JSON.stringify(s.notificationReads);
   markNotificationsRead(s, ["not-visible"]);
   s.role = "senior";
-  markNotificationsRead(s, ["demo:patient-call"]);
+  markNotificationsRead(s, ["demo:call-symptoms"]);
   assert.equal(JSON.stringify(s.notificationReads), before);
   assert.equal(unreadNotificationCount(s), 0);
 });

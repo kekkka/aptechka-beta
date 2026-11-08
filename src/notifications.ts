@@ -1,3 +1,4 @@
+import { demoCalls } from "./monitoring";
 import { fmt, medKey, shopping, signals } from "./model";
 import { inventoryItems } from "./inventory";
 import type { State } from "./types";
@@ -12,7 +13,8 @@ export interface CareNotification {
   time?: string;
   demo?: boolean;
   detail?: string;
-  action?: "plan" | "stock";
+  action?: "plan" | "stock" | "devices";
+  callId?: string;
 }
 
 // Store the version that was read: materially updated cards become unread again.
@@ -69,24 +71,20 @@ export function careNotifications(state: State): CareNotification[] {
   }));
   return [
     ...doses,
-    {
-      id: "demo:patient-call",
-      kind: "patient",
-      title: "Самочувствие после звонка",
-      text: "Пример: пациент рассказал об усталости. Самочувствие нужно уточнить.",
-      source: "От пациента · пример разбора разговора",
-      demo: true,
-      detail: "Пример расшифровки: «Сегодня чувствую усталость. Давление пока не измеряла». Здесь появятся расшифровка звонка и краткое резюме. Звонки и распознавание речи пока не подключены. Значение давления можно получить только из измерения, а не из голоса.",
-    },
+    ...(state.role === "anna" ? demoCalls(state).slice(0, 2).map(call => ({
+      id: `demo:${call.id}`, kind: "patient" as const, title: call.status === "missed" ? "Пациент не ответил на звонок" : "Самочувствие после звонка",
+      text: call.summary, source: "Мониторинг · пример звонка", time: call.at, demo: true,
+      action: "devices" as const, callId: call.id,
+    })) : []),
     ...stock,
-    {
+    ...(state.role === "anna" ? [{
       id: "demo:health-monitoring",
-      kind: "health",
+      kind: "health" as const,
       title: "Сигнал мониторинга здоровья",
       text: "Пример: измеренный показатель вышел за настроенный диапазон.",
       source: "Мониторинг здоровья · пример уведомления",
       demo: true,
       detail: "Здесь появятся название показателя, измеренное значение, время и источник измерения. Мониторинг пока не подключён: эта карточка не отражает состояние пациента.",
-    },
+    }] : []),
   ];
 }

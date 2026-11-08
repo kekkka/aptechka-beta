@@ -275,10 +275,12 @@ export function HealthMetrics({
   day,
   days,
   clock,
+  iot = false,
 }: {
   day: string;
   days: number;
   clock: number;
+  iot?: boolean;
 }) {
   const labels = sampleLabels(day, days, clock);
   const metrics: Metric[] = [
@@ -308,16 +310,16 @@ export function HealthMetrics({
       samples: labels.map((p) => ({ ...p, values: [pulse[p.index % 10]] })),
     },
     {
-      id: "mood",
-      title: "Самочувствие",
+      id: iot ? "oxygen" : "mood",
+      title: iot ? "Сатурация" : "Самочувствие",
       icon: "sun",
-      unit: "из 5",
-      min: 1,
-      max: 5,
+      unit: iot ? "%" : "из 5",
+      min: iot ? 90 : 1,
+      max: iot ? 100 : 5,
       colors: ["#b49a76"],
-      series: ["Оценка самочувствия"],
-      bars: true,
-      samples: labels.map((p) => ({ ...p, values: [mood[p.index % 10]] })),
+      series: [iot ? "Сатурация" : "Оценка самочувствия"],
+      bars: !iot,
+      samples: labels.map((p) => ({ ...p, values: [iot ? [97, 98, 97, 99, 98, 97, 98, 99, 98, 97][p.index % 10] : mood[p.index % 10]] })),
     },
   ];
   return (

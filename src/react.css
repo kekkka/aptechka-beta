@@ -3832,3 +3832,76 @@ button.regular-event-summary {
   margin-top: 8px;
   font-size: 12px;
 }
+
+/* Patient monitoring: prepared call examples and device integration previews. */
+.condition-card { display:block; width:100%; text-align:left; padding:22px; border:1px solid #e8ddce; border-radius:26px; background:linear-gradient(130deg,#fcf5e9,#f6efe6); margin:20px 0; color:#365361; }
+.monitor-eyebrow { display:flex; align-items:center; justify-content:space-between; gap:12px; font-size:9px; letter-spacing:1.4px; color:#927e63; }
+.monitor-demo { display:inline-block; flex-shrink:0; font-size:10px; font-weight:400; letter-spacing:0; padding:4px 9px; border-radius:20px; color:#658493; background:#e8f0f3; }
+.condition-title { display:flex; align-items:center; gap:10px; margin:16px 0 10px; font-size:21px; letter-spacing:-.5px; }
+.condition-title > .react-icon:last-child { margin-left:auto; }
+.condition-summary { display:block; font-size:14px; line-height:1.7; }
+.condition-source { display:block; margin-top:13px; color:#8d8d80; font-size:11px; line-height:1.7; }
+.condition-missed { display:flex; align-items:flex-start; gap:7px; font-size:11px; line-height:1.6; color:#97816b; border-top:1px solid #dacbb657; margin-top:14px; padding-top:12px; }
+.condition-missed .react-icon { flex-shrink:0; }
+.condition-missed svg { width:15px; height:15px; }
+.patient-monitoring > .text-link { margin-bottom:18px; }
+.monitor-notice { display:flex; gap:10px; padding:16px; border-radius:18px; background:#e9f1f5; color:#738f9f; font-size:12px; line-height:1.7; }
+.monitor-notice > .react-icon { flex-shrink:0; }
+.monitor-condition { margin-top:22px; padding:22px; background:#fcf5e9; border:1px solid #eadfce; border-radius:25px; }
+.monitor-section-heading { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.monitor-section-heading h2 { font-size:19px; letter-spacing:-.5px; }
+.monitor-section-heading > span:not(.monitor-demo) { font-size:11px; color:#8da1ab; }
+.monitor-condition h3 { font-size:22px; color:#997346; margin-top:19px; }
+.monitor-condition > p { font-size:14px; line-height:1.8; margin-top:10px; }
+.monitor-condition > small { display:block; font-size:11px; color:#938a7f; margin-top:13px; }
+.monitor-section { margin-top:30px; }
+.monitor-caption { font-size:12px; line-height:1.7; color:#869ca9; margin-top:7px; }
+.monitor-calls { margin-top:15px; display:grid; gap:10px; }
+.monitor-call { border:1px solid #e5edf1; border-radius:21px; background:#fff; overflow:hidden; }
+.monitor-call summary { list-style:none; display:flex; align-items:center; gap:12px; padding:18px; cursor:pointer; }
+.monitor-call summary::-webkit-details-marker { display:none; }
+.monitor-call summary > span:nth-child(2) { flex:1; min-width:0; }
+.monitor-call summary strong { display:block; font-size:13px; font-weight:600; }
+.monitor-call summary small { display:block; font-size:11px; color:#8da1ad; margin-top:5px; }
+.monitor-call summary > .react-icon { color:#8ba3b1; transition:transform .2s; }
+.monitor-call[open] summary > .react-icon { transform:rotate(90deg); }
+.monitor-call-icon { display:grid; place-items:center; width:38px; height:38px; border-radius:50%; background:#edf4ef; color:#7b9b89; flex-shrink:0; }
+.monitor-call-icon.missed { background:#f8eee5; color:#b28a68; }
+.monitor-call-body { padding:0 18px 20px; }
+.monitor-call-body > h3 { padding-top:16px; border-top:1px solid #edf2f5; font-size:15px; }
+.monitor-call-body > p { font-size:13px; line-height:1.8; margin-top:9px; }
+.monitor-call-body h4 { font-size:12px; margin:20px 0 12px; }
+.monitor-call-body > small { display:block; margin-top:12px; font-size:10px; line-height:1.7; color:#8da0ab; }
+.monitor-transcript { display:grid; gap:10px; }
+.monitor-transcript p { font-size:12px; line-height:1.8; padding:12px 14px; border-radius:15px; background:#f0f5f8; }
+.monitor-transcript p:nth-child(even) { background:#f4f4ed; }
+.monitor-transcript strong { display:block; font-size:10px; color:#8ba0ab; margin-bottom:4px; font-weight:500; }
+.monitor-schedule { padding:22px; border:1px solid #e4ecf1; border-radius:25px; background:#fff; }
+.monitor-schedule .segmented { margin-bottom:18px; }
+.monitor-schedule .segmented button { font-size:11px; padding:10px 5px; }
+.monitor-schedule .field { margin-top:15px; }
+.monitor-schedule .btn { width:100%; margin-top:15px; }
+.monitor-save-message { font-size:12px; line-height:1.7; color:#527e6d; margin-top:12px; }
+.monitor-times { display:grid; gap:10px; }
+.monitor-times > div { display:flex; align-items:flex-end; gap:10px; }
+.monitor-times .field { flex:1; }
+.monitor-times .icon-btn { margin-bottom:3px; }
+.monitor-times > .text-link { margin-top:10px; }
+.monitor-device-list { margin:14px 0 18px; }
+.monitor-device-list > div { display:flex; align-items:center; gap:11px; padding:16px 0; border-bottom:1px solid #e6edf1; }
+.monitor-device-list > div > span:nth-child(2) { flex:1; }
+.monitor-device-list strong { display:block; font-size:13px; font-weight:550; }
+.monitor-device-list small { display:block; font-size:11px; color:#8da2af; margin-top:5px; }
+.monitor-device-list .monitor-caption { font-size:9px; margin:0; }
+.monitor-device-choices { display:grid; gap:12px; margin-top:20px; }
+.patient-monitoring .doctor-health-metrics { margin-top:20px; }
+@media (prefers-reduced-motion:reduce) { .monitor-call summary > .react-icon { transition:none; } }
+.monitor-schedule-summary { display:flex; align-items:center; justify-content:space-between; gap:14px; }
+.monitor-schedule-summary > div { min-width:0; }
+.monitor-schedule-summary h2 { font-size:17px; letter-spacing:-.4px; }
+.monitor-schedule-summary .monitor-caption { overflow-wrap:anywhere; }
+.monitor-schedule .monitor-schedule-summary > .btn { width:auto; margin:0; flex-shrink:0; padding:11px 14px; font-size:11px; }
+.monitor-schedule-editor .segmented { margin-bottom:18px; }
+.monitor-schedule-editor .segmented button { font-size:11px; }
+.monitor-schedule-editor .field { margin-top:15px; }
+.monitor-schedule-editor .btn { width:100%; margin-top:18px; }

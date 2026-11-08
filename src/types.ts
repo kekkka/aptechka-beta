@@ -176,6 +176,7 @@ export interface State {
   logs: Record<string, DoseLog>;
   signalState: Record<string, SignalState>;
   settings: {
+    patientCalls?: import("./monitoring").PatientCallSchedule;
     grace: number;
     backup: string;
     notifications: boolean;

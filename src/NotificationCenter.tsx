@@ -12,7 +12,7 @@ const categories: { kind: NotificationKind; label: string; icon: string; empty: 
 
 export function NotificationCenter({ state, onNavigate, onRead }: {
   state: State;
-  onNavigate: (view: "plan" | "stock") => void;
+  onNavigate: (view: "plan" | "stock" | "devices", callId?: string) => void;
   onRead: (ids: string[]) => void;
 }) {
   const items = careNotifications(state);
@@ -115,9 +115,9 @@ export function NotificationCenter({ state, onNavigate, onRead }: {
                       </details>}
                       {item.action && <button className="notification-action" onClick={() => {
                         const target = item.action!;
-                        pendingAction.current = () => onNavigate(target);
+                        pendingAction.current = () => onNavigate(target, item.callId);
                         close();
-                      }}>{item.action === "plan" ? "Открыть план" : "Открыть аптечку"}<Icon name="arrow" /></button>}
+                      }}>{item.action === "plan" ? "Открыть план" : item.action === "devices" ? "Открыть мониторинг" : "Открыть аптечку"}<Icon name="arrow" /></button>}
                     </div>
                   </article>) : <p className="notification-category-empty">{category.empty}</p>}
                 </section>;
