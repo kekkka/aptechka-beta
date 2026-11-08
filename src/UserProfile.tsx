@@ -1,25 +1,127 @@
 import { Button, Heading, Icon } from "./components";
 import { accounts, actor } from "./model";
-import type { AccountId, State, View } from "./types";
+import type { AccountId, State } from "./types";
+
+function EditProfileButton({
+  name,
+  onClick,
+}: {
+  name: string;
+  onClick: () => void;
+}) {
+  const label = `Изменить профиль: ${name}`;
+  return (
+    <button
+      type="button"
+      className="profile-edit-button"
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+    >
+      <Icon name="edit" />
+    </button>
+  );
+}
+
+function PersonProfileCard({
+  title,
+  name,
+  contact,
+  age,
+  onEdit,
+  onCall,
+  onDelete,
+  callLabel = "Позвонить пациенту",
+}: {
+  title: string;
+  name: string;
+  contact?: string;
+  age?: number;
+  onEdit?: () => void;
+  onCall?: () => void;
+  onDelete?: () => void;
+  callLabel?: string;
+}) {
+  return (
+    <section className="profile-card" aria-label={title}>
+      <div className="profile-person-heading">
+        <span className="avatar" aria-hidden="true">
+          {name
+            .trim()
+            .split(/\s+/)
+            .slice(0, 2)
+            .map((part) => part[0])
+            .join("")
+            .toLocaleUpperCase("ru-RU")}
+        </span>
+        <h2>{title}</h2>
+        {onEdit && <EditProfileButton name={name} onClick={onEdit} />}
+        {onDelete && (
+          <button
+            type="button"
+            className="profile-delete-button"
+            onClick={onDelete}
+            aria-label={`Удалить помощника: ${name}`}
+            title={`Удалить помощника: ${name}`}
+          >
+            <Icon name="trash" />
+          </button>
+        )}
+      </div>
+      <dl className="profile-details">
+        <div>
+          <dt>ФИО</dt>
+          <dd>{name}</dd>
+        </div>
+        <div>
+          <dt>Контакт</dt>
+          <dd>{contact || "Не указан"}</dd>
+        </div>
+        {age !== undefined && (
+          <div>
+            <dt>Возраст</dt>
+            <dd>{age}</dd>
+          </div>
+        )}
+      </dl>
+      {onCall && (
+        <div className="profile-actions">
+          <Button kind="soft" onClick={onCall} disabled={!contact?.trim()}>
+            <Icon name="phone" />
+            {callLabel}
+          </Button>
+        </div>
+      )}
+    </section>
+  );
+}
 
 export function UserProfile({
   state,
   account,
   onBack,
-  onNavigate,
   onEditPatient,
-  onContacts,
-  onSettings,
+  onEditManager,
+  onCallMember,
+  onCallPatient,
+  onEditCaregiver,
+  onEditHelper,
+  onDeleteHelper,
+  onEmergencyContact,
   onInvite,
   onLogout,
 }: {
   state: State;
   account: AccountId;
   onBack: () => void;
-  onNavigate: (view: View) => void;
   onEditPatient: () => void;
-  onContacts: () => void;
-  onSettings: () => void;
+  onEditManager: () => void;
+  onCallMember: (id: string) => void;
+  onCallPatient: () => void;
+  onEditCaregiver: (id: string) => void;
+  onEditHelper: (id: string) => void;
+  onDeleteHelper: (id: string) => void;
+  onEmergencyContact: (id: string) => void;
   onInvite: () => void;
   onLogout: () => void;
 }) {
@@ -27,12 +129,9 @@ export function UserProfile({
   const member = actor({ ...state, role: account });
   const patient = account === "senior";
   const manager = account === "anna";
-  const permissions = [
-    { label: "Просмотр плана и журнала", enabled: member.view },
-    { label: "Отметки о приёме лекарств", enabled: member.view && member.mark },
-    { label: "Управление запасами", enabled: member.view && member.stock },
-    { label: "Сигналы о пропусках", enabled: member.view && member.alerts },
-  ];
+  const contact = patient
+    ? state.patient.contact
+    : state.members.find((item) => item.id === account)?.contact;
 
   return (
     <div className={`user-profile user-profile-${active.color}`}>
@@ -45,164 +144,175 @@ export function UserProfile({
         className="profile-card profile-identity"
         aria-label="Данные пользователя"
       >
-        <span className="profile-portrait">
-          <Icon name={active.icon} />
+        {manager && (
+          <EditProfileButton name={member.name} onClick={onEditManager} />
+        )}
+        <span className="profile-portrait" aria-hidden="true">
+          {member.name
+            .trim()
+            .split(/\s+/)
+            .slice(0, 2)
+            .map((part) => part[0])
+            .join("")
+            .toLocaleUpperCase("ru-RU")}
         </span>
         <h2>{member.name}</h2>
         <span className="profile-role">{active.role}</span>
-        <p>{active.description}</p>
         <dl className="profile-details">
-          {patient ? (
-            <>
-              <div>
-                <dt>Возраст</dt>
-                <dd>{state.patient.age}</dd>
-              </div>
-              <div>
-                <dt>Город</dt>
-                <dd>{state.patient.city || "Не указан"}</dd>
-              </div>
-            </>
-          ) : (
-            <>
-              <div>
-                <dt>Пациент</dt>
-                <dd>{state.patient.name}</dd>
-              </div>
-              <div>
-                <dt>Отношение к пациенту</dt>
-                <dd>{member.relation}</dd>
-              </div>
-            </>
+          <div>
+            <dt>ФИО</dt>
+            <dd>{member.name}</dd>
+          </div>
+          <div>
+            <dt>Телефон</dt>
+            <dd>{contact || "Не указан"}</dd>
+          </div>
+          {patient && (
+            <div>
+              <dt>Возраст</dt>
+              <dd>{state.patient.age}</dd>
+            </div>
           )}
         </dl>
       </section>
 
-      <section className="profile-card" aria-labelledby="profile-care-title">
-        <h2 id="profile-care-title">
-          {patient ? "Близкие и помощники" : "Данные пациента"}
-        </h2>
-        {patient ? (
-          <ul className="profile-team">
-            {state.members
-              .filter((item) => item.view)
-              .map((item) => (
-                <li key={item.id}>
-                  <span className="avatar">{item.name[0]}</span>
-                  <span>
-                    <strong>{item.name}</strong>
-                    <small>
-                      {item.id === "anna" ? "Менеджер лечения" : item.relation}
-                    </small>
-                  </span>
-                </li>
-              ))}
-          </ul>
-        ) : (
-          <div className="profile-patient">
-            <Icon name="heart" />
-            <span>
-              <strong>{state.patient.name}</strong>
-              <small>
-                Возраст: {state.patient.age} ·{" "}
-                {state.patient.city || "Город не указан"}
-              </small>
-            </span>
-          </div>
-        )}
-        <div className="profile-actions">
-          <Button kind="soft" onClick={onContacts}>
-            <Icon name="phone" />
-            {patient ? "Связаться с близкими" : "Контакты команды"}
-          </Button>
-          {manager && (
-            <Button kind="white" onClick={onEditPatient}>
-              <Icon name="edit" />
-              Изменить данные пациента
-            </Button>
+      {!manager && (
+        <section
+          className={patient ? "profile-team-section" : "profile-card"}
+          aria-labelledby="profile-care-title"
+        >
+          <h2 id="profile-care-title">
+            {patient ? "Близкие и помощники" : "Данные пациента"}
+          </h2>
+          {patient ? (
+            <>
+              {state.members
+                .filter((item) => item.view)
+                .map((item) => (
+                  <PersonProfileCard
+                    key={item.id}
+                    title={
+                      item.id === "anna"
+                        ? "Менеджер лечения"
+                        : item.role === "family"
+                          ? `Помощник · ${item.relation}`
+                          : item.relation
+                    }
+                    name={item.name}
+                    contact={item.contact}
+                    onCall={() => onCallMember(item.id)}
+                    callLabel={`Позвонить: ${item.name}`}
+                  />
+                ))}
+            </>
+          ) : (
+            <div className="profile-patient">
+              <Icon name="heart" />
+              <span>
+                <strong>{state.patient.name}</strong>
+                <small>Возраст: {state.patient.age}</small>
+              </span>
+            </div>
           )}
-          {manager && (
+          {!patient && (
+            <div className="profile-actions">
+              <Button
+                kind="soft"
+                onClick={onCallPatient}
+                disabled={!state.patient.contact?.trim()}
+              >
+                <Icon name="phone" />
+                Позвонить пациенту
+              </Button>
+            </div>
+          )}
+        </section>
+      )}
+
+      {manager && (
+        <>
+          <PersonProfileCard
+            title="Пациент"
+            name={state.patient.name}
+            contact={state.patient.contact}
+            age={state.patient.age}
+            onEdit={onEditPatient}
+            onCall={onCallPatient}
+          />
+          {state.members
+            .filter((item) => item.role === "caregiver")
+            .map((item) => (
+              <PersonProfileCard
+                key={item.id}
+                title="Сиделка"
+                name={item.name}
+                contact={item.contact}
+                onEdit={() => onEditCaregiver(item.id)}
+              />
+            ))}
+          {!state.members.some((item) => item.role === "caregiver") && (
+            <section className="profile-card" aria-label="Сиделка">
+              <h2>Сиделка</h2>
+              <p>Сиделки пока не добавлены.</p>
+            </section>
+          )}
+          <div className="profile-actions">
             <Button kind="white" onClick={onInvite}>
               <Icon name="plus" />
               Добавить помощника
             </Button>
-          )}
-        </div>
-      </section>
+          </div>
+        </>
+      )}
 
-      {!patient && (
+      {!patient &&
+        state.members
+          .filter((item) => item.role === "family" && item.view)
+          .map((item) => (
+            <PersonProfileCard
+              key={item.id}
+              title={`Помощник · ${item.relation}`}
+              name={item.name}
+              contact={item.contact}
+              onCall={manager ? undefined : () => onCallMember(item.id)}
+              onEdit={manager ? () => onEditHelper(item.id) : undefined}
+              onDelete={manager ? () => onDeleteHelper(item.id) : undefined}
+              callLabel={`Позвонить: ${item.name}`}
+            />
+          ))}
+
+      {manager && (
         <section
           className="profile-card"
-          aria-labelledby="profile-access-title"
+          aria-labelledby="profile-emergency-title"
         >
-          <h2 id="profile-access-title">Права доступа</h2>
-          <ul className="profile-permissions">
-            {permissions.map((permission) => (
-              <li key={permission.label}>
-                <span>{permission.label}</span>
-                <span
-                  className={
-                    permission.enabled
-                      ? "profile-access-on"
-                      : "profile-access-off"
-                  }
-                >
-                  <Icon name={permission.enabled ? "check" : "stop"} />
-                  {permission.enabled ? "Доступно" : "Нет доступа"}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <h2 id="profile-emergency-title">Экстренный контакт</h2>
           <p className="profile-description">
-            {manager
-              ? "Вы управляете доступом участников команды."
-              : "Права доступа настраивает менеджер лечения."}
+            Кнопка звонка этому человеку будет на главном экране пациента.
+            Звонки в прототипе демонстрационные.
           </p>
+          <label className="field">
+            <span>Кому позвонить</span>
+            <select
+              value={state.settings.emergencyContact || "anna"}
+              onChange={(event) => onEmergencyContact(event.target.value)}
+            >
+              {state.members
+                .filter((item) => item.view)
+                .map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name} ·{" "}
+                    {item.id === "anna" ? "Менеджер лечения" : item.relation}
+                  </option>
+                ))}
+            </select>
+          </label>
         </section>
       )}
 
-      <section className="profile-card" aria-labelledby="profile-actions-title">
-        <h2 id="profile-actions-title">
-          {manager
-            ? "План, чат и сигналы"
-            : patient
-              ? "Приёмы и история"
-              : "План и чат"}
-        </h2>
-        <div className="profile-actions">
-          <Button kind="white" onClick={() => onNavigate("home")}>
-            <Icon name="home" />
-            {patient ? "К приёму лекарств" : "К обзору дня"}
-          </Button>
-          {patient ? (
-            <Button kind="white" onClick={() => onNavigate("doctor")}>
-              <Icon name="clipboard" />
-              История для врача
-            </Button>
-          ) : (
-            <>
-              <Button kind="white" onClick={() => onNavigate("plan")}>
-                <Icon name="calendar" />
-                План приёмов
-              </Button>
-              <Button kind="white" onClick={() => onNavigate("chat")}>
-                <Icon name="chat" />
-                Чат команды
-              </Button>
-            </>
-          )}
-          {manager && (
-            <Button kind="white" onClick={onSettings}>
-              <Icon name="bell" />
-              Настройки сигналов
-            </Button>
-          )}
-        </div>
-      </section>
-
-      <Button kind="soft" onClick={onLogout}>
+      <Button kind="danger" onClick={onLogout}>
         <Icon name="users" />
-        Сменить аккаунт
+        Выйти из аккаунта
       </Button>
     </div>
   );

@@ -12,6 +12,7 @@ export type View =
 export interface Member {
   id: string;
   name: string;
+  contact?: string;
   relation: string;
   role: string;
   view: boolean;
@@ -112,13 +113,24 @@ export interface State {
   day: string;
   clock: number;
   role: string;
-  patient: { name: string; short: string; age: number; city: string };
+  patient: {
+    name: string;
+    short: string;
+    age: number;
+    city: string;
+    contact?: string;
+  };
   members: Member[];
   courses: Course[];
   stock: Stock[];
   logs: Record<string, DoseLog>;
   signalState: Record<string, SignalState>;
-  settings: { grace: number; backup: string; notifications: boolean };
+  settings: {
+    grace: number;
+    backup: string;
+    notifications: boolean;
+    emergencyContact?: string;
+  };
   audit: Audit[];
   careTasks: CareTask[];
   careDone: Record<string, string>;

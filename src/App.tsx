@@ -29,6 +29,7 @@ import {
   resetDemoDose,
   mins,
   record,
+  removeHelper,
   shopping,
   signals,
   completeCareTask,
@@ -53,11 +54,14 @@ type Dialog =
   | { type: "stock"; stock?: Stock }
   | { type: "medication-info"; stock: Stock }
   | { type: "catalog"; query?: string }
-  | { type: "permissions"; id: string }
+  | { type: "caregiver"; id: string }
+  | { type: "helper"; id: string }
+  | { type: "delete-helper"; id: string }
   | {
       type:
         | "import"
         | "patient"
+        | "manager"
         | "contact"
         | "settings"
         | "clock"
@@ -272,10 +276,32 @@ export default function App() {
         state={state}
         account={account}
         onBack={() => navigate(profileReturn)}
-        onNavigate={navigate}
         onEditPatient={() => setDialog({ type: "patient" })}
-        onContacts={() => setDialog({ type: "contact" })}
-        onSettings={() => setDialog({ type: "settings" })}
+        onEditManager={() => setDialog({ type: "manager" })}
+        onCallMember={(id) => {
+          const member = state.members.find(
+            (item) => item.id === id && item.view,
+          );
+          if (!member?.contact?.trim()) return;
+          setToast(
+            `Демо-звонок: ${member.name}, ${member.contact}. Телефония пока не подключена.`,
+          );
+        }}
+        onCallPatient={() => {
+          if (!state.patient.contact?.trim()) return;
+          setToast(
+            `Демо-звонок: ${state.patient.name}, ${state.patient.contact}. Телефония пока не подключена.`,
+          );
+        }}
+        onEditCaregiver={(id) => setDialog({ type: "caregiver", id })}
+        onEditHelper={(id) => setDialog({ type: "helper", id })}
+        onDeleteHelper={(id) => setDialog({ type: "delete-helper", id })}
+        onEmergencyContact={(id) => {
+          if (!owner) return;
+          change((next) => {
+            next.settings.emergencyContact = id;
+          });
+        }}
         onInvite={() => setDialog({ type: "invite" })}
         onLogout={logout}
       />
@@ -300,9 +326,28 @@ export default function App() {
           }}
         />
         <div className="patient-call-action">
-          <Button kind="soft" onClick={() => setDialog({ type: "contact" })}>
+          <Button
+            kind="soft"
+            onClick={() => {
+              const contact = state.members.find(
+                (member) =>
+                  member.id === (state.settings.emergencyContact || "anna") &&
+                  member.view,
+              );
+              if (contact)
+                setToast(
+                  `Демо-звонок: ${contact.name}. Телефония пока не подключена.`,
+                );
+              else setDialog({ type: "contact" });
+            }}
+          >
             <Icon name="phone" />
-            Позвонить близким
+            Позвонить:{" "}
+            {state.members.find(
+              (member) =>
+                member.id === (state.settings.emergencyContact || "anna") &&
+                member.view,
+            )?.name || "близким"}
           </Button>
         </div>
         <div className="patient-doctor-action">
@@ -1058,6 +1103,7 @@ export default function App() {
           change((s) => {
             s.patient = {
               name: String(d.get("name")).trim(),
+              contact: String(d.get("contact") || "").trim(),
               age: Number(d.get("age")),
               city: String(d.get("city")).trim(),
               short: String(d.get("short")).trim(),
@@ -1067,7 +1113,20 @@ export default function App() {
         }}
       >
         <fieldset disabled={!owner}>
-          <Field label="Имя" name="name" defaultValue={state.patient.name} />
+          <Field
+            label="ФИО"
+            name="name"
+            defaultValue={state.patient.name}
+            placeholder="Иванов Иван Иванович"
+          />
+          <Field
+            label="Контакт"
+            name="contact"
+            type="tel"
+            required={false}
+            defaultValue={state.patient.contact || ""}
+            placeholder="+7 (999) 123-45-67"
+          />
           <Field
             label="Возраст"
             name="age"
@@ -1118,47 +1177,102 @@ export default function App() {
         </p>
       </>
     );
-  else if (dialog?.type === "permissions") {
-    const m = state.members.find((m) => m.id === dialog.id);
-    modal = m ? (
-      <div className="permissions">
-        {(["view", "mark", "stock", "alerts"] as const).map((key, i) => (
-          <label className="permission" key={key}>
-            {
-              [
-                "Смотреть план и журнал",
-                "Отмечать приёмы",
-                "Менять остатки и покупки",
-                "Получать сигналы",
-              ][i]
-            }
-            <input
-              type="checkbox"
-              className="switch"
-              disabled={!owner || (key !== "view" && !m.view)}
-              checked={m[key]}
-              onChange={(e) =>
-                change((s) => {
-                  const member = s.members.find((m) => m.id === dialog.id)!;
-                  member[key] = e.target.checked;
-                  if (!member.view) {
-                    member.mark = false;
-                    member.stock = false;
-                    member.alerts = false;
-                  }
-                  record(
-                    s,
-                    "permission",
-                    me.name + " изменила доступ",
-                    member.name,
-                  );
-                })
-              }
-            />
-          </label>
-        ))}
-      </div>
-    ) : null;
+  else if (dialog?.type === "delete-helper") {
+    const helper = state.members.find(
+      (member) => member.id === dialog.id && member.role === "family",
+    );
+    modal =
+      owner && helper ? (
+        <>
+          <p>
+            Удалить помощника {helper.name}? Он исчезнет из всех профилей и
+            списка контактов.
+          </p>
+          <div className="profile-actions">
+            <Button
+              kind="danger"
+              onClick={() => {
+                change((next) => {
+                  removeHelper(next, helper.id);
+                });
+                close();
+                setToast("Помощник удалён.");
+              }}
+            >
+              Удалить помощника
+            </Button>
+            <Button kind="white" onClick={close}>
+              Отмена
+            </Button>
+          </div>
+        </>
+      ) : null;
+  } else if (
+    dialog?.type === "caregiver" ||
+    dialog?.type === "manager" ||
+    dialog?.type === "helper"
+  ) {
+    const managerProfile = dialog.type === "manager";
+    const profileMember = state.members.find((member) =>
+      dialog.type === "manager"
+        ? member.id === "anna"
+        : (dialog.type === "caregiver" || dialog.type === "helper") &&
+          member.id === dialog.id &&
+          member.role === (dialog.type === "helper" ? "family" : "caregiver"),
+    );
+    modal =
+      owner && profileMember ? (
+        <form
+          key={profileMember.id}
+          onSubmit={(event) => {
+            const data = formData(event);
+            const name = String(data.get("name")).trim();
+            if (!name) return;
+            change((next) => {
+              const member = next.members.find(
+                (item) => item.id === profileMember.id,
+              )!;
+              member.name = name;
+              member.contact = String(data.get("contact") || "").trim();
+              record(
+                next,
+                "profile",
+                managerProfile
+                  ? "Обновлён профиль менеджера лечения"
+                  : dialog.type === "helper"
+                    ? "Обновлён профиль помощника"
+                    : "Обновлён профиль сиделки",
+                name,
+              );
+            });
+            close();
+          }}
+        >
+          <Field
+            label="ФИО"
+            name="name"
+            defaultValue={profileMember.name}
+            placeholder="Иванов Иван Иванович"
+          />
+          <Field
+            label={managerProfile ? "Телефон" : "Контакт"}
+            name="contact"
+            type="tel"
+            required={false}
+            defaultValue={profileMember.contact || ""}
+            placeholder="+7 (999) 123-45-67"
+          />
+          <p className="caption">
+            Роль:{" "}
+            {managerProfile
+              ? "Менеджер лечения"
+              : dialog.type === "helper"
+                ? `Помощник · ${profileMember.relation}`
+                : "Сиделка"}
+          </p>
+          <Button type="submit">Сохранить</Button>
+        </form>
+      ) : null;
   } else if (dialog?.type === "invite")
     modal = (
       <form
@@ -1320,9 +1434,12 @@ export default function App() {
       dialog?.type === "medication-info" ? dialog.stock.name : "О препарате",
     catalog: "Добавить лекарство",
     import: "Распознать назначение",
-    patient: "Профиль близкого",
+    patient: "Профиль пациента",
     contact: "Связаться с близкими",
-    permissions: "Настроить доступ",
+    caregiver: "Профиль сиделки",
+    helper: "Профиль помощника",
+    "delete-helper": "Удалить помощника?",
+    manager: "Профиль менеджера лечения",
     invite: "Добавить помощника",
     settings: "Настройки сигналов",
     clock: "Управление демо",
@@ -1348,16 +1465,21 @@ export default function App() {
                 navigate("profile");
               }}
               aria-label={`Открыть профиль: ${me.name}`}
+              title={`${me.name} · ${active?.role}`}
               aria-current={view === "profile" ? "page" : undefined}
             >
-              <span className={`avatar ${account === "elena" ? "sand" : ""}`}>
-                {me.name[0]}
+              <span
+                className={`avatar ${account === "elena" ? "sand" : ""}`}
+                aria-hidden="true"
+              >
+                {me.name
+                  .trim()
+                  .split(/\s+/)
+                  .slice(0, 2)
+                  .map((part) => part[0])
+                  .join("")
+                  .toLocaleUpperCase("ru-RU")}
               </span>
-              <span className="profile-copy">
-                <strong>{me.name}</strong>
-                <small>{active?.role}</small>
-              </span>
-              <Icon name="chevron" />
             </button>
             <NotificationCenter state={state} onNavigate={navigate}
               onRead={(ids) => change((s) => markNotificationsRead(s, ids))} />

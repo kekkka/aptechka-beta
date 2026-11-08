@@ -27,6 +27,43 @@ export const hm = (n: number) =>
 export const mins = (s: string) =>
   Number(s.slice(0, 2)) * 60 + Number(s.slice(3, 5));
 const DAY = iso();
+const DEMO_PROFILES = {
+  patient: { name: "Иванова Нина Петровна", contact: "+7 (999) 123-45-67" },
+  anna: { name: "Иванова Анна Сергеевна", contact: "+7 (999) 234-56-78" },
+  elena: { name: "Смирнова Елена Викторовна", contact: "+7 (999) 345-67-89" },
+  max: { name: "Иванов Максим Андреевич", contact: "+7 (999) 456-78-90" },
+};
+
+export function upgradeDemoProfiles(state: State) {
+  const profiles = [
+    {
+      profile: state.patient,
+      legacyName: "Нина Петровна",
+      demo: DEMO_PROFILES.patient,
+    },
+    {
+      profile: state.members.find((member) => member.id === "anna"),
+      legacyName: "Анна",
+      demo: DEMO_PROFILES.anna,
+    },
+    {
+      profile: state.members.find((member) => member.id === "elena"),
+      legacyName: "Елена",
+      demo: DEMO_PROFILES.elena,
+    },
+    {
+      profile: state.members.find((member) => member.id === "max"),
+      legacyName: "Максим",
+      demo: DEMO_PROFILES.max,
+    },
+  ];
+  for (const { profile, legacyName, demo } of profiles) {
+    if (profile?.name === legacyName && profile.contact === undefined) {
+      Object.assign(profile, demo);
+    }
+  }
+}
+
 const CARE_TASKS: CareTask[] = [
   {
     id: "ct-feed",
@@ -55,11 +92,11 @@ export const seed = (): State => ({
   day: DAY,
   clock: 825,
   role: "anna",
-  patient: { name: "Нина Петровна", short: "Мама", age: 74, city: "Тверь" },
+  patient: { ...DEMO_PROFILES.patient, short: "Мама", age: 74, city: "Тверь" },
   members: [
     {
       id: "anna",
-      name: "Анна",
+      ...DEMO_PROFILES.anna,
       relation: "Дочь",
       role: "owner",
       view: true,
@@ -69,7 +106,7 @@ export const seed = (): State => ({
     },
     {
       id: "elena",
-      name: "Елена",
+      ...DEMO_PROFILES.elena,
       relation: "Сиделка",
       role: "caregiver",
       view: true,
@@ -79,7 +116,7 @@ export const seed = (): State => ({
     },
     {
       id: "max",
-      name: "Максим",
+      ...DEMO_PROFILES.max,
       relation: "Внук",
       role: "family",
       view: true,
@@ -240,6 +277,7 @@ export function loadState(): State {
       Array.isArray(s.members)
     ) {
       upgradeDemoMedications(s);
+      upgradeDemoProfiles(s);
       expireDoses(s);
       if (!Array.isArray(s.careTasks)) s.careTasks = CARE_TASKS;
       if (!s.careDone || typeof s.careDone !== "object") s.careDone = {};
@@ -264,6 +302,19 @@ export function actor(s: State) {
     : s.members.find((m) => m.id === s.role) || s.members[0];
 }
 export const isOwner = (s: State) => s.role === "anna";
+export function removeHelper(state: State, id: string): boolean {
+  if (!isOwner(state)) return false;
+  const helper = state.members.find(
+    (member) => member.id === id && member.role === "family",
+  );
+  if (!helper) return false;
+  state.members = state.members.filter((member) => member.id !== id);
+  if (state.settings.emergencyContact === id)
+    state.settings.emergencyContact = "anna";
+  if (state.settings.backup === id) state.settings.backup = "anna";
+  record(state, "profile", "Удалён помощник", helper.name);
+  return true;
+}
 export const canViewCourse = (s: State, c: State["courses"][number]) =>
   isOwner(s) || s.role === "senior" || !c.importMethod || c.helper === s.role;
 export function events(s: State, date = s.day): DoseEvent[] {

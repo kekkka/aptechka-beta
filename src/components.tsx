@@ -164,6 +164,7 @@ export function Field({
   min,
   max,
   step,
+  placeholder,
 }: {
   label: string;
   name: string;
@@ -173,6 +174,7 @@ export function Field({
   min?: number | string;
   max?: number | string;
   step?: number;
+  placeholder?: string;
 }) {
   return (
     <label className="field">
@@ -185,6 +187,7 @@ export function Field({
         min={min}
         max={max}
         step={step}
+        placeholder={placeholder}
       />
     </label>
   );
