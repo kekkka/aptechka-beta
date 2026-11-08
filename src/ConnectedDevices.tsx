@@ -48,7 +48,7 @@ export function ConnectedDevices({
         <span className="monitor-demo">Демо</span>
       </div>
       <p className="monitor-caption">
-        3 устройства · примеры подключения и измерений
+        Примеры измерений и доступные устройства
       </p>
       <div className="connected-device-list">
         {devices.map((device) => (
@@ -76,6 +76,14 @@ export function ConnectedDevices({
             </div>
           </article>
         ))}
+        <article className="connected-device">
+          <div className="connected-device-heading">
+            <span className="med-icon"><Icon name="camera" /></span>
+            <div><h3>Камера</h3><p>Видеонаблюдение</p></div>
+            <span className="monitor-caption">Не подключена</span>
+          </div>
+          <p className="monitor-caption">Разбор видео по таймкодам появится позже.</p>
+        </article>
       </div>
       <p className="connected-devices-note">Показания и статусы вымышлены.</p>
       <Button kind="white" onClick={onAdd}>
